@@ -12,13 +12,19 @@
       "csp": null,
       "assetProtocol": {
         "enable": true,
-        "scope": ["**"]
+        "scope": [
+          "**"
+        ]
       }
     }
   },
   "bundle": {
     "active": true,
-    "targets": ["deb", "nsis", "msi"],
+    "targets": [
+      "deb",
+      "nsis",
+      "msi"
+    ],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -36,14 +42,23 @@
     "licenseFile": "../LICENSE",
     "fileAssociations": [
       {
-        "ext": ["md", "markdown", "mdown", "mkd", "mkdn"],
+        "ext": [
+          "md",
+          "markdown",
+          "mdown",
+          "mkd",
+          "mkdn"
+        ],
         "name": "Markdown",
         "description": "Documento Markdown",
         "role": "Viewer",
         "mimeType": "text/markdown"
       },
       {
-        "ext": ["mmd", "mermaid"],
+        "ext": [
+          "mmd",
+          "mermaid"
+        ],
         "name": "Mermaid",
         "description": "Diagrama Mermaid",
         "role": "Editor",
@@ -56,13 +71,16 @@
         "desktopTemplate": "../packaging/linux/mirante.desktop.hbs",
         "files": {
           "/usr/share/mime/packages/mirante-mermaid.xml": "../packaging/linux/mirante-mermaid.xml",
-          "/usr/share/metainfo/io.github.mirante.Viewer.metainfo.xml": "../packaging/linux/io.github.mirante.Viewer.metainfo.xml"
+          "/usr/share/metainfo/io.github.mirante.Viewer.metainfo.xml": "../packaging/linux/io.github.mirante.Viewer.metainfo.xml",
+          "/usr/share/applications/io.github.mirante.Viewer.desktop": "../packaging/linux/io.github.mirante.Viewer.desktop"
         }
       }
     },
     "windows": {
       "nsis": {
-        "languages": ["PortugueseBR"],
+        "languages": [
+          "PortugueseBR"
+        ],
         "installMode": "currentUser"
       },
       "wix": {

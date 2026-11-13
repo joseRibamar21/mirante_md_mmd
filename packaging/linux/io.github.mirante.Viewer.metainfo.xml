@@ -43,6 +43,12 @@
   </provides>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="2.1.0" date="2026-11-13">
+      <description>
+        <p>Agora também no Windows: a camada nativa foi reescrita com Tauri. Busca no texto e lista de
+        atalhos dentro do app, janela que se ajusta a telas pequenas e instaladores para Windows e Linux.</p>
+      </description>
+    </release>
     <release version="2.0.0" date="2026-11-12">
       <description>
         <p>Primeira versão pública: tela inicial com arquivos recentes, carregamento no tema salvo,

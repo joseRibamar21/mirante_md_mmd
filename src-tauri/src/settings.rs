@@ -65,10 +65,6 @@ impl Settings {
         Value::Object(p)
     }
 
-    pub fn get(&self, key: &str) -> Option<&Value> {
-        self.data["defaults"].get(key)
-    }
-
     pub fn set_prefs(&mut self, path: Option<&str>, prefs: &Value) {
         self.data["defaults"] = prefs.clone();
         if let Some(path) = path {

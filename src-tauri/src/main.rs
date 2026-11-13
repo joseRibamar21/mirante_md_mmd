@@ -186,6 +186,7 @@ fn new_window(app: &AppHandle) -> tauri::Result<WebviewWindow> {
         .title(APP_NAME)
         .inner_size(1180.0, 820.0)
         .min_inner_size(520.0, 380.0)
+        .visible(false)
         .menu(build_menu(app)?)
         .on_menu_event(|w, e| menu_action(w.app_handle(), w.label(), e.id().as_ref()))
         .theme(saved.map(theme_of))
@@ -193,6 +194,7 @@ fn new_window(app: &AppHandle) -> tauri::Result<WebviewWindow> {
         .initialization_script(init_script(theme, false))
         .on_navigation(move |url| navigate(&nav.0, &nav.1, url))
         .build()?;
+    fit_and_show(&win, 1180.0, 820.0);
 
     let (h, l) = (app.clone(), label.clone());
     win.on_window_event(move |ev| match ev {
@@ -225,6 +227,20 @@ fn new_window(app: &AppHandle) -> tauri::Result<WebviewWindow> {
         _ => {}
     });
     Ok(win)
+}
+
+/// Cabe na tela: telas pequenas (1366×768, 1024×768) cortavam a barra de baixo da janela.
+fn fit_and_show(win: &WebviewWindow, width: f64, height: f64) {
+    let monitor = win.current_monitor().ok().flatten().or_else(|| win.primary_monitor().ok().flatten());
+    if let Some(m) = monitor {
+        let (s, area) = (m.scale_factor(), m.work_area());
+        let (max_w, max_h) = (area.size.width as f64 / s * 0.94, area.size.height as f64 / s * 0.94);
+        if width > max_w || height > max_h {
+            let _ = win.set_size(tauri::LogicalSize::new(width.min(max_w), height.min(max_h)));
+        }
+    }
+    let _ = win.center();
+    let _ = win.show();
 }
 
 fn destroy(app: &AppHandle, label: &str) {
@@ -567,12 +583,14 @@ fn open_editor_window(app: &AppHandle, main: &str) {
         let built = WebviewWindowBuilder::new(app, &label, WebviewUrl::App("viewer.html".into()))
             .title("Código")
             .inner_size(560.0, 820.0)
+            .visible(false)
             .theme(Some(theme_of(dark)))
             .background_color(bg(dark))
             .initialization_script(init_script(if dark { "dark" } else { "light" }, true))
             .on_navigation(|url| url.scheme() == "tauri" || url.host_str() == Some("tauri.localhost"))
             .build();
         let Ok(win) = built else { return };
+        fit_and_show(&win, 560.0, 820.0);
         let (h, main2) = (app.clone(), m.clone());
         win.on_window_event(move |ev| {
             if matches!(ev, WindowEvent::Destroyed) {

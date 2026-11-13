@@ -1,17 +1,18 @@
 <div align="center">
 
-<img src="mirante/data/mirante.svg" width="88" alt="Ícone do Mirante">
+<img src="packaging/mirante.svg" width="88" alt="Ícone do Mirante">
 
 # Mirante
 
-**Visualizador e editor de Markdown e diagramas Mermaid para Linux**
+**Visualizador e editor de Markdown e diagramas Mermaid para Windows e Linux**
 
 [![CI](https://github.com/joseRibamar21/mirante_md_mmd/actions/workflows/ci.yml/badge.svg)](https://github.com/joseRibamar21/mirante_md_mmd/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/joseRibamar21/mirante_md_mmd?label=vers%C3%A3o)](https://github.com/joseRibamar21/mirante_md_mmd/releases/latest)
 [![Licença MIT](https://img.shields.io/github/license/joseRibamar21/mirante_md_mmd?label=licen%C3%A7a)](LICENSE)
-![Linux](https://img.shields.io/badge/plataforma-Linux-informational)
+![Windows e Linux](https://img.shields.io/badge/plataforma-Windows%20%7C%20Linux-informational)
 
-[**Baixar o .deb**](https://github.com/joseRibamar21/mirante_md_mmd/releases/latest/download/mirante_all.deb) ·
+[**Baixar para Windows**](https://github.com/joseRibamar21/mirante_md_mmd/releases/latest/download/Mirante-windows-x64-setup.exe) ·
+[**Baixar para Linux (.deb)**](https://github.com/joseRibamar21/mirante_md_mmd/releases/latest/download/Mirante-linux-amd64.deb) ·
 [Todas as versões](https://github.com/joseRibamar21/mirante_md_mmd/releases) ·
 [Reportar um problema](https://github.com/joseRibamar21/mirante_md_mmd/issues)
 
@@ -34,10 +35,11 @@ edite direto nele: o painel de código fica ao lado e o desenho acompanha enquan
 - **Editor ao lado** (<kbd>Ctrl</kbd> <kbd>E</kbd>) ou em janela separada (<kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>O</kbd>),
   com o desenho atualizando ao vivo.
 - **Sempre em dia com o disco**: salvou em outro programa, o Mirante redesenha na hora.
-- **Tela inicial com os arquivos recentes**, e links para outros `.md`/`.mmd` abrem no próprio app.
+- **Tela inicial com os arquivos recentes**; links para outros `.md`/`.mmd` e arquivos arrastados para a
+  janela abrem no próprio app.
 - **Tema claro e escuro**, efeito de vidro e barra de controles que se esconde.
 - **Zoom e movimento suaves a 60 fps**, com o modo de renderização escolhido pela sua placa de vídeo.
-- **Exportar** o diagrama em SVG, **imprimir** ou salvar em PDF e **buscar** no texto.
+- **Buscar** no texto (<kbd>Ctrl</kbd> <kbd>F</kbd>), **exportar** o diagrama em SVG e **imprimir** ou salvar em PDF.
 
 ## Capturas
 
@@ -50,32 +52,25 @@ edite direto nele: o painel de código fica ao lado e o desenho acompanha enquan
 
 ## Instalação
 
-### Pacote .deb (Ubuntu 22.04+ e Debian 12+)
+### Windows 10 e 11
+
+Baixe e rode o [**instalador**](https://github.com/joseRibamar21/mirante_md_mmd/releases/latest/download/Mirante-windows-x64-setup.exe)
+(cerca de 3 MB; instala só para o seu usuário, sem pedir administrador). Ele registra o Mirante para abrir
+arquivos `.md` e `.mmd`. Também há um [`.msi`](https://github.com/joseRibamar21/mirante_md_mmd/releases/latest/download/Mirante-windows-x64.msi)
+para quem distribui em empresas.
+
+> O instalador ainda não tem assinatura digital. Se o Windows mostrar "O Windows protegeu o computador",
+> clique em **Mais informações → Executar assim mesmo**.
+
+### Ubuntu 22.04+ e Debian 12+
 
 ```bash
-wget https://github.com/joseRibamar21/mirante_md_mmd/releases/latest/download/mirante_all.deb
-sudo apt install ./mirante_all.deb
+wget https://github.com/joseRibamar21/mirante_md_mmd/releases/latest/download/Mirante-linux-amd64.deb
+sudo apt install ./Mirante-linux-amd64.deb
 ```
 
-Depois procure **Mirante** no menu de apps, ou abra um `.md`/`.mmd` pelo gerenciador de arquivos e
-escolha "Abrir com Mirante". Para remover: `sudo apt remove mirante`.
-
-### A partir do código, sem sudo
-
-Instala só para o seu usuário, em `~/.local`, e define o Mirante como app padrão para `.md` e `.mmd`:
-
-```bash
-sudo apt install python3-gi gir1.2-gtk-3.0 gir1.2-webkit2-4.1   # dependências, se ainda não tiver
-git clone https://github.com/joseRibamar21/mirante_md_mmd.git
-cd mirante_md_mmd
-./mirante/install.sh               # --no-default: não muda o app padrão · --uninstall: remove
-```
-
-### Rodar sem instalar
-
-```bash
-python3 mirante/mirante.py exemplos/bem-vindo.md
-```
+Depois procure **Mirante** no menu de apps, ou abra um `.md`/`.mmd` pelo gerenciador de arquivos.
+Para remover: `sudo apt remove mirante`.
 
 ## Atalhos
 
@@ -84,14 +79,15 @@ python3 mirante/mirante.py exemplos/bem-vindo.md
 | <kbd>Ctrl</kbd> <kbd>O</kbd> | Abrir arquivo | Clique | Selecionar nó |
 | <kbd>Ctrl</kbd> <kbd>S</kbd> | Salvar | Duplo clique, <kbd>F2</kbd> | Renomear |
 | <kbd>Ctrl</kbd> <kbd>E</kbd> | Mostrar o código | <kbd>Tab</kbd> | Adicionar filho |
-| <kbd>Ctrl</kbd> <kbd>D</kbd> | Tema claro / escuro | <kbd>Enter</kbd> | Adicionar irmão |
-| <kbd>Ctrl</kbd> <kbd>F</kbd> | Buscar | <kbd>Delete</kbd> | Excluir nó e filhos |
+| <kbd>Ctrl</kbd> <kbd>F</kbd> | Buscar no texto | <kbd>Enter</kbd> | Adicionar irmão |
+| <kbd>Ctrl</kbd> <kbd>D</kbd> | Tema claro / escuro | <kbd>Delete</kbd> | Excluir nó e filhos |
 | <kbd>F5</kbd> | Recarregar do disco | Setas | Navegar entre nós |
 | <kbd>Ctrl</kbd> <kbd>Z</kbd> / <kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>Z</kbd> | Desfazer / refazer | <kbd>Alt</kbd> <kbd>↑</kbd> <kbd>↓</kbd> | Mover entre irmãos |
-| <kbd>Ctrl</kbd> <kbd>+</kbd> <kbd>−</kbd> <kbd>0</kbd> | Zoom | Arrastar nó sobre outro | Mudar de pai |
+| <kbd>Ctrl</kbd> <kbd>=</kbd> <kbd>−</kbd> <kbd>0</kbd> | Zoom | Arrastar nó sobre outro | Mudar de pai |
 | <kbd>Ctrl</kbd> <kbd>1</kbd> | Ajustar à janela | Arrastar o fundo, roda | Mover o diagrama |
 | <kbd>Ctrl</kbd> <kbd>P</kbd> | Imprimir / PDF | <kbd>Ctrl</kbd> + roda, pinça | Zoom |
 | <kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>E</kbd> | Exportar SVG | | |
+| <kbd>Ctrl</kbd> <kbd>N</kbd> / <kbd>Ctrl</kbd> <kbd>W</kbd> | Nova janela / fechar | | |
 
 A lista completa fica em <kbd>F1</kbd> dentro do app.
 
@@ -108,56 +104,61 @@ A pasta [`exemplos/`](exemplos) tem um arquivo de cada tipo para experimentar:
 
 ## Como funciona
 
-O Mirante é um app GTK 3 em Python. A janela usa uma WebView (WebKitGTK) para desenhar o conteúdo:
+O Mirante é feito com [Tauri 2](https://tauri.app): uma camada nativa pequena em Rust e uma página web que
+desenha tudo. No Windows a página roda no WebView2 (o motor do Edge, que já vem no sistema); no Linux, no
+WebKitGTK. Por isso o instalador tem poucos megabytes.
 
-| Arquivo | Papel |
+| Pasta / arquivo | Papel |
 | --- | --- |
-| `mirante/mirante.py` | Janela, arquivos (abrir, salvar, acompanhar mudanças), preferências e recentes |
-| `mirante/viewer.html`, `viewer.js`, `viewer.css` | A página: Markdown, diagramas, editor, zoom e animações |
-| `mirante/mindmap.js` | Motor do mapa mental: leitura da sintaxe, layouts, desenho e edição |
-| `mirante/worker.html` | Renderiza diagramas Mermaid pesados numa WebView separada |
-| `mirante/vendor/` | Mermaid, marked, DOMPurify, highlight.js e a fonte Inter ([licenças](mirante/vendor/LICENSES.md)) |
+| `src-tauri/src/main.rs` | Janelas e menus, abrir/salvar, acompanhar o arquivo no disco, instância única, diálogos |
+| `src-tauri/src/settings.rs` | Preferências e arquivos recentes |
+| `src-tauri/src/hardware.rs` | Escolha do modo de renderização pela placa de vídeo |
+| `web/viewer.html`, `viewer.js`, `viewer.css` | A página: Markdown, diagramas, editor, busca, zoom e animações |
+| `web/mindmap.js` | Motor do mapa mental: leitura da sintaxe, layouts, desenho e edição |
+| `web/vendor/` | Mermaid, marked, DOMPurify, highlight.js e a fonte Inter ([licenças](web/vendor/LICENSES.md)) |
+| `packaging/` | Ícone, atalho do menu, tipo `.mmd` e metainfo do Linux |
 
 As preferências e a lista de recentes (só nome e caminho de cada arquivo) ficam em
-`~/.config/mirante/settings.json`.
+`~/.config/mirante/settings.json` no Linux e em `%APPDATA%\mirante\settings.json` no Windows.
 
 ## Desenvolvimento
 
-```bash
-python3 mirante/mirante.py exemplos/mapa-mental.mmd   # rodar direto do código
-packaging/build-deb.sh                                # gerar dist/mirante_<versão>_all.deb
-```
-
-**Builds automáticos.** A cada push na `main`, o [CI](https://github.com/joseRibamar21/mirante_md_mmd/actions/workflows/ci.yml)
-verifica o código, gera o `.deb` (disponível como artefato da execução) e testa a instalação no Ubuntu
-22.04 e 24.04.
-
-**Publicar uma versão.** Atualize `APP_VERSION` em `mirante/mirante.py` e a seção `<releases>` em
-`mirante/data/io.github.mirante.Viewer.metainfo.xml`, faça o commit e envie uma tag com o mesmo número:
+Precisa de [Node.js](https://nodejs.org) 18+ e [Rust](https://rustup.rs) estável. No Linux, também dos
+pacotes de desenvolvimento do WebKitGTK; no Windows, das ferramentas de C++ do Visual Studio
+([detalhes](https://tauri.app/start/prerequisites/)).
 
 ```bash
-git tag v2.1.0
-git push origin v2.1.0
+sudo apt install libwebkit2gtk-4.1-dev libxdo-dev librsvg2-dev build-essential   # só no Linux
+npm install
+npm run dev            # abre o app em modo de desenvolvimento
+npm run build          # gera os instaladores em src-tauri/target/release/bundle/
+cd src-tauri && cargo test
 ```
 
-O [workflow de release](.github/workflows/release.yml) confere a versão, gera e testa o `.deb` e cria a
-release com o pacote anexado.
+**Builds automáticos.** A cada push na `main` e em pull requests, o [CI](https://github.com/joseRibamar21/mirante_md_mmd/actions/workflows/ci.yml)
+compila no Linux e no Windows, roda os testes, instala os pacotes em sistemas limpos (Windows, Ubuntu 22.04
+e 24.04), abre o app e guarda os instaladores e capturas de tela como artefatos da execução.
 
-**Regravar o GIF do README.** Os scripts em [`tools/demo/`](tools/demo) abrem o app, executam o roteiro
-de [`demo.js`](tools/demo/demo.js) e montam `docs/demo.gif` e as capturas. Precisa de `ffmpeg` e Pillow:
+**Publicar uma versão.** Atualize `version` em `src-tauri/Cargo.toml` e a seção `<releases>` em
+`packaging/linux/io.github.mirante.Viewer.metainfo.xml`, faça o commit e envie uma tag com o mesmo número:
 
 ```bash
-python3 tools/demo/recorder.py /tmp/gravacao mirante exemplos
-python3 tools/demo/make_gif.py /tmp/gravacao docs
+git tag v2.2.0
+git push origin v2.2.0
 ```
+
+O [workflow de release](.github/workflows/release.yml) confere a versão, gera os instaladores das duas
+plataformas e cria a release com eles anexados.
 
 ## Próximos passos
 
+- [x] Windows
 - [ ] Snap Store (App Center do Ubuntu)
+- [ ] Microsoft Store
 - [ ] Flathub
-- [ ] Windows e Microsoft Store (exige trocar a camada GTK por uma multiplataforma, como Tauri)
+- [ ] Assinatura digital do instalador do Windows
 
 ## Licença
 
-[MIT](LICENSE) © José Ribamar. Os componentes de terceiros em `mirante/vendor/` mantêm as próprias
-licenças, listadas em [`mirante/vendor/LICENSES.md`](mirante/vendor/LICENSES.md).
+[MIT](LICENSE) © José Ribamar. Os componentes de terceiros em `web/vendor/` mantêm as próprias
+licenças, listadas em [`web/vendor/LICENSES.md`](web/vendor/LICENSES.md).

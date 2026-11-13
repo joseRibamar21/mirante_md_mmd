@@ -195,17 +195,6 @@
       document.head.appendChild(sc);
     }));
   }
-  /* O Mermaid leva ~400 ms num diagrama grande e trava a página enquanto desenha. No app, quem
-   * desenha é uma página invisível em OUTRO processo do WebKit (worker.html, via Python); aqui só
-   * entra o SVG pronto. Sem o app (ou se o worker falhar), desenha localmente como antes. */
-  const pendingWorker = new Map();
-  function workerRender(id, code, gen) {
-    return new Promise((resolve) => {
-      const t = setTimeout(() => { pendingWorker.delete(id); resolve({ workerFailed: true }); }, 20000);
-      pendingWorker.set(id, (r) => { clearTimeout(t); resolve(r); });
-      post({ type: "mmdRender", id, code, gen, config: mermaidConfig() });
-    });
-  }
   async function localRender(id, code) {
     try { await loadMermaid(); } catch (err) { return { error: String(err.message || err) }; }
     mermaidInit();
@@ -216,8 +205,7 @@
     const key = cacheKey(code), hit = cacheGet(key);
     if (hit) return { svg: hit };
     const id = `mmd-${my}-${Math.random().toString(36).slice(2, 8)}`;
-    let r = S.worker ? await workerRender(id, code, my) : { workerFailed: true };
-    if (r.workerFailed) r = await localRender(id, code);
+    const r = await localRender(id, code);
     if (r.svg) cachePut(key, r.svg);
     return r;
   }
@@ -1301,10 +1289,8 @@
     getSource: () => S.text,
     isDirty: () => S.dirty,
     markSaved: () => { S.saved = S.text; setDirty(false); },
-    enableWorker: () => { S.worker = true; },
     setDetected: (d) => { S.detected = { mode: d.mode in MODES ? d.mode : "balanced", label: d.label || "" }; applyMode(); if (S.popover) openPopover(); },
     _mode: () => ({ mode: modeName(), ...M() }),
-    mmdDone: (r) => { const f = pendingWorker.get(r.id); if (f) { pendingWorker.delete(r.id); f(r); } },
     setPref: (k, v) => { setPref(k, v); if (S.popover) openPopover(); },
     /* janela de código separada ↔ principal */
     setDetached: (on) => {

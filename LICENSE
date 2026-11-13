@@ -22,5 +22,5 @@ SOFTWARE.
 
 ---
 
-Third-party components bundled in mirante/vendor/ keep their own licenses.
-See mirante/vendor/LICENSES.md.
+Third-party components bundled in web/vendor/ keep their own licenses.
+See web/vendor/LICENSES.md.

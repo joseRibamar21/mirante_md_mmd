@@ -1,6 +1,6 @@
 name: Release
 
-# Publica uma versão ao enviar uma tag vX.Y.Z (ela precisa bater com APP_VERSION em mirante/mirante.py):
+# Publica uma versão ao enviar uma tag vX.Y.Z (ela precisa bater com `version` em src-tauri/Cargo.toml):
 #   git tag v2.1.0 && git push origin v2.1.0
 on:
   push:
@@ -10,52 +10,90 @@ permissions:
   contents: write
 
 jobs:
-  release:
-    runs-on: ubuntu-24.04
+  build:
+    name: Gerar (${{ matrix.name }})
+    strategy:
+      matrix:
+        include:
+          - name: Linux
+            os: ubuntu-22.04
+          - name: Windows
+            os: windows-latest
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
 
       - name: Conferir a versão
+        shell: bash
         run: |
-          app="$(sed -n 's/^APP_VERSION = "\(.*\)"/\1/p' mirante/mirante.py)"
+          app="$(sed -n 's/^version = "\(.*\)"/\1/p' src-tauri/Cargo.toml | head -1)"
           tag="${GITHUB_REF_NAME#v}"
           if [ "$app" != "$tag" ]; then
-            echo "::error::A tag $GITHUB_REF_NAME não bate com APP_VERSION = \"$app\" em mirante/mirante.py"
+            echo "::error::A tag $GITHUB_REF_NAME não bate com version = \"$app\" em src-tauri/Cargo.toml"
             exit 1
           fi
-          echo "VERSION=$tag" >> "$GITHUB_ENV"
 
-      - name: Gerar o .deb
-        run: |
-          packaging/build-deb.sh "$VERSION"
-          cp "dist/mirante_${VERSION}_all.deb" dist/mirante_all.deb   # nome fixo para o link "última versão"
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
 
-      - name: Testar a instalação
+      - name: Dependências do sistema (Linux)
+        if: runner.os == 'Linux'
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq "./dist/mirante_${VERSION}_all.deb" xvfb dbus-x11
-          set +e
-          dbus-run-session -- xvfb-run -a timeout 20 mirante exemplos/mapa-mental.mmd
-          code=$?
-          set -e
-          test "$code" = 124
+          sudo apt-get install -y -qq libwebkit2gtk-4.1-dev libxdo-dev librsvg2-dev
 
-      - name: Publicar a release
-        uses: softprops/action-gh-release@v3
+      - run: npm ci
+      - run: npx tauri build
+
+      # nomes fixos: o README aponta para releases/latest/download/<nome>
+      - name: Renomear os instaladores (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          mkdir out
+          cp src-tauri/target/release/bundle/deb/*.deb out/Mirante-linux-amd64.deb
+      - name: Renomear os instaladores (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory out | Out-Null
+          Copy-Item (Get-ChildItem src-tauri/target/release/bundle/nsis/*-setup.exe)[0] out/Mirante-windows-x64-setup.exe
+          Copy-Item (Get-ChildItem src-tauri/target/release/bundle/msi/*.msi)[0] out/Mirante-windows-x64.msi
+
+      - uses: actions/upload-artifact@v7
         with:
-          name: Mirante ${{ env.VERSION }}
+          name: release-${{ matrix.name }}
+          path: out/*
+          if-no-files-found: error
+
+  publish:
+    name: Publicar a release
+    needs: build
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          path: out
+          merge-multiple: true
+      - run: ls -la out
+      - uses: softprops/action-gh-release@v3
+        with:
+          name: Mirante ${{ github.ref_name }}
           generate_release_notes: true
-          files: |
-            dist/mirante_${{ env.VERSION }}_all.deb
-            dist/mirante_all.deb
+          files: out/*
           body: |
-            ## Instalar no Ubuntu 22.04+ ou Debian 12+
+            ## Instalar
 
-            Baixe `mirante_${{ env.VERSION }}_all.deb` abaixo e instale:
+            | Sistema | Arquivo |
+            | --- | --- |
+            | **Windows 10 e 11** | `Mirante-windows-x64-setup.exe` (recomendado) ou `Mirante-windows-x64.msi` |
+            | **Ubuntu 22.04+ / Debian 12+** | `Mirante-linux-amd64.deb` → `sudo apt install ./Mirante-linux-amd64.deb` |
 
-            ```bash
-            sudo apt install ./mirante_${{ env.VERSION }}_all.deb
-            ```
-
-            Depois é só procurar **Mirante** no menu de apps ou abrir um `.md`/`.mmd` pelo gerenciador de arquivos.
-            `mirante_all.deb` é o mesmo pacote, com nome fixo para o link de "última versão" do README.
+            No Windows o instalador registra o Mirante para abrir `.md` e `.mmd`. Se o SmartScreen avisar
+            que o app é de um editor desconhecido, clique em **Mais informações → Executar assim mesmo**
+            (o instalador ainda não tem assinatura digital).

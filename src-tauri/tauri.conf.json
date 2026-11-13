@@ -1,0 +1,73 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Mirante",
+  "identifier": "io.github.mirante.Viewer",
+  "build": {
+    "frontendDist": "../web"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [],
+    "security": {
+      "csp": null,
+      "assetProtocol": {
+        "enable": true,
+        "scope": ["**"]
+      }
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["deb", "nsis", "msi"],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.ico",
+      "icons/icon.png"
+    ],
+    "category": "Utility",
+    "shortDescription": "Visualizador e editor de Markdown e diagramas Mermaid",
+    "longDescription": "Abre arquivos .md e .mmd com visual limpo e atualiza sozinho quando o arquivo muda no disco. Mapas mentais editáveis com quatro layouts, editor de código ao lado com o desenho ao vivo, tema claro e escuro e exportação para SVG e PDF.",
+    "publisher": "José Ribamar",
+    "copyright": "© 2026 José Ribamar",
+    "homepage": "https://github.com/joseRibamar21/mirante_md_mmd",
+    "license": "MIT",
+    "licenseFile": "../LICENSE",
+    "fileAssociations": [
+      {
+        "ext": ["md", "markdown", "mdown", "mkd", "mkdn"],
+        "name": "Markdown",
+        "description": "Documento Markdown",
+        "role": "Viewer",
+        "mimeType": "text/markdown"
+      },
+      {
+        "ext": ["mmd", "mermaid"],
+        "name": "Mermaid",
+        "description": "Diagrama Mermaid",
+        "role": "Editor",
+        "mimeType": "text/vnd.mermaid"
+      }
+    ],
+    "linux": {
+      "deb": {
+        "section": "text",
+        "desktopTemplate": "../packaging/linux/mirante.desktop.hbs",
+        "files": {
+          "/usr/share/mime/packages/mirante-mermaid.xml": "../packaging/linux/mirante-mermaid.xml",
+          "/usr/share/metainfo/io.github.mirante.Viewer.metainfo.xml": "../packaging/linux/io.github.mirante.Viewer.metainfo.xml"
+        }
+      }
+    },
+    "windows": {
+      "nsis": {
+        "languages": ["PortugueseBR"],
+        "installMode": "currentUser"
+      },
+      "wix": {
+        "language": "pt-BR"
+      }
+    }
+  }
+}

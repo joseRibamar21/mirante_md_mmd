@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Janelas do Mirante: só a ponte com a camada nativa (comando page_message).",
+  "windows": ["*"],
+  "permissions": ["core:default"]
+}

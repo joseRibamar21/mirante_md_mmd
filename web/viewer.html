@@ -9,6 +9,7 @@
 <script>
   /* tema salvo, injetado pelo app antes do HTML: aplica antes da primeira pintura */
   (function (t) {
+    if (t === "system") t = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
     if (t !== "light" && t !== "dark") return;
     document.documentElement.dataset.theme = t;
     document.getElementById("gh-css").href = "vendor/gh-" + t + ".css";
@@ -76,6 +77,16 @@
     <div id="syntax-badge" class="glass-pill" hidden><b>Erro de sintaxe</b><span></span></div>
   </main>
 </div>
+
+<div id="findbar" class="glass-pill" role="search" hidden>
+  <input id="find-input" type="text" placeholder="Buscar no texto" spellcheck="false" autocomplete="off" aria-label="Buscar no texto">
+  <span id="find-count" aria-live="polite"></span>
+  <button class="icon-btn small" data-find="prev" title="Anterior (Shift+Enter)"></button>
+  <button class="icon-btn small" data-find="next" title="Próximo (Enter)"></button>
+  <button class="icon-btn small" data-find="close" title="Fechar (Esc)"></button>
+</div>
+<div id="scrim" hidden></div>
+<section id="shortcuts" class="glass-card" role="dialog" aria-label="Atalhos de teclado" hidden></section>
 
 <nav id="dock" class="glass-pill" aria-label="Controles de visualização"></nav>
 <div id="dock-hint" aria-hidden="true"></div>

@@ -14,7 +14,7 @@
     view: $("view"), editor: $("editor"), hint: $("dock-hint"),
   };
   /* viewer.html?editor=1 → janela separada só com o editor; o texto "de verdade" fica na janela principal */
-  const EDITOR_ONLY = new URLSearchParams(location.search).has("editor");
+  const EDITOR_ONLY = new URLSearchParams(location.search).has("editor") || !!window.MIRANTE_EDITOR_ONLY;
 
   const DEFAULTS = {
     layout: "both", levelGap: 56, siblingGap: 14, cardWidth: 220,
@@ -30,8 +30,13 @@
     history: [], future: [], typing: false, editorOpen: false, seq: 0, popover: null, detached: false,
   };
 
-  const post = (msg) => { try { window.webkit.messageHandlers.mirante.postMessage(JSON.stringify(msg)); } catch (_) { /* fora do app */ } };
-  const IN_APP = !!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.mirante);
+  /* Ponte com a camada nativa: Tauri (Windows e Linux) ou o app GTK antigo. Fora do app, nada. */
+  const TAURI = window.__TAURI__ && window.__TAURI__.core;
+  const post = (msg) => {
+    if (TAURI) { TAURI.invoke("page_message", { msg: JSON.stringify(msg) }).catch(() => {}); return; }
+    try { window.webkit.messageHandlers.mirante.postMessage(JSON.stringify(msg)); } catch (_) { /* fora do app */ }
+  };
+  const IN_APP = !!TAURI || !!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.mirante);
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const escapeHtml = (s) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
@@ -1081,7 +1086,8 @@
   /* ---------------- teclado global ---------------- */
   document.addEventListener("keydown", (e) => {
     if (e.target === E.src || S.editing) return;
-    if (e.target.closest && e.target.closest("#popover")) return;
+    if (e.key === "Escape" && !$("shortcuts").hidden) { closeShortcuts(); return; }
+    if (e.target.closest && e.target.closest("#popover, #findbar")) return;
     const mod = e.ctrlKey || e.metaKey;
     if (mod && (e.key === "z" || e.key === "Z")) { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
     if (mod && e.key === "y") { e.preventDefault(); redo(); return; }
@@ -1167,6 +1173,90 @@
     buildDock();
   }
 
+  /* ---------------- busca no texto (Ctrl+F) ----------------
+   * Usa a busca do próprio navegador (window.find), que funciona igual no WebKitGTK e no WebView2.
+   * No mapa mental, o mapa desliza até o cartão encontrado. */
+  const FB = { bar: $("findbar"), input: $("find-input"), count: $("find-count") };
+  FB.bar.querySelector('[data-find="prev"]').innerHTML = icon("aUp");
+  FB.bar.querySelector('[data-find="next"]').innerHTML = icon("aDown");
+  FB.bar.querySelector('[data-find="close"]').innerHTML = icon("close");
+  function findCount(q) {
+    const root = S.kind === "md" ? E.doc : E.canvas;
+    const text = (root.textContent || "").toLowerCase(), needle = q.toLowerCase();
+    let n = 0;
+    for (let i = text.indexOf(needle); needle && i >= 0; i = text.indexOf(needle, i + needle.length)) n++;
+    return n;
+  }
+  function findStep(back) {
+    const q = FB.input.value;
+    if (!q) { FB.count.textContent = ""; getSelection().removeAllRanges(); return; }
+    const n = findCount(q);
+    FB.count.textContent = n ? `${n} resultado${n === 1 ? "" : "s"}` : "Nenhum resultado";
+    if (n && window.find(q, false, !!back, true, false, false, false)) {
+      const at = getSelection().anchorNode;
+      const card = at && (at.nodeType === 1 ? at : at.parentElement).closest(".mm-node");
+      if (card && S.parsed) { const node = S.parsed.nodes[+card.dataset.id]; if (node) ensureVisible(node.line); }
+    }
+    FB.input.focus({ preventScroll: true });
+  }
+  function openFind() {
+    if (!S.kind) return;
+    FB.bar.hidden = false;
+    const sel = String(getSelection() || "").trim();
+    if (sel && sel.length < 80 && !sel.includes("\n")) FB.input.value = sel;
+    FB.input.focus(); FB.input.select();
+    if (FB.input.value) FB.count.textContent = `${findCount(FB.input.value)} resultado(s)`;
+  }
+  function closeFind() { FB.bar.hidden = true; FB.count.textContent = ""; getSelection().removeAllRanges(); }
+  let findT = 0;
+  FB.input.addEventListener("input", () => { clearTimeout(findT); findT = setTimeout(() => findStep(false), 120); });
+  FB.input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { e.preventDefault(); findStep(e.shiftKey); }
+    else if (e.key === "Escape") { e.preventDefault(); closeFind(); }
+  });
+  FB.bar.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-find]");
+    if (!b) return;
+    if (b.dataset.find === "close") closeFind(); else findStep(b.dataset.find === "prev");
+  });
+
+  /* ---------------- atalhos de teclado (F1) ---------------- */
+  const SHORTCUTS = [
+    ["Geral", [["Ctrl O", "Abrir arquivo"], ["Ctrl S", "Salvar"], ["Ctrl E", "Editor de código"], ["F5", "Recarregar do disco"],
+      ["Ctrl F", "Buscar"], ["Ctrl D", "Tema claro / escuro"], ["Ctrl Z · Ctrl Shift Z", "Desfazer · refazer"],
+      ["Ctrl P", "Imprimir / PDF"], ["Ctrl Shift E", "Exportar SVG"], ["Ctrl N", "Nova janela"], ["Ctrl W", "Fechar janela"]]],
+    ["Visualização", [["Ctrl + roda, pinça", "Zoom"], ["Ctrl = · Ctrl − · Ctrl 0", "Zoom"], ["Ctrl 1", "Ajustar à janela"],
+      ["Arrastar o fundo, roda", "Mover o diagrama"]]],
+    ["Mapa mental", [["Clique", "Selecionar nó"], ["Duplo clique, F2", "Renomear"], ["Tab", "Adicionar filho"],
+      ["Enter", "Adicionar irmão"], ["Delete", "Excluir nó e filhos"], ["Setas", "Navegar entre nós"],
+      ["Alt ↑ · Alt ↓", "Mover entre irmãos"], ["Arrastar nó sobre outro", "Mudar de pai"]]],
+  ];
+  // "Ctrl Shift Z" → teclas; palavras ("roda", "Clique") ficam como texto
+  const KEY = /^(Ctrl|Shift|Alt|Tab|Enter|Delete|Esc|F\d+|[A-Z0-9=−↑↓])$/;
+  const keys = (k) => k.split(" ").map((t) => (KEY.test(t) ? `<kbd>${escapeHtml(t)}</kbd>` : escapeHtml(t))).join(" ");
+  function showShortcuts() {
+    const box = $("shortcuts");
+    box.innerHTML = `<header><h2>Atalhos de teclado</h2><button class="icon-btn small" data-close title="Fechar (Esc)">${icon("close")}</button></header>` +
+      `<div class="sc-cols">${SHORTCUTS.map(([title, rows]) => `<section><h3>${title}</h3><dl>${rows.map(([k, d]) =>
+        `<dt>${keys(k)}</dt><dd>${escapeHtml(d)}</dd>`).join("")}</dl></section>`).join("")}</div>`;
+    box.hidden = false; $("scrim").hidden = false;
+  }
+  function closeShortcuts() { $("shortcuts").hidden = true; $("scrim").hidden = true; }
+  $("shortcuts").addEventListener("click", (e) => { if (e.target.closest("[data-close]")) closeShortcuts(); });
+  $("scrim").addEventListener("click", closeShortcuts);
+
+  /* placa de vídeo, para a camada nativa escolher o modo de renderização */
+  function gpuRenderer() {
+    try {
+      const gl = document.createElement("canvas").getContext("webgl");
+      if (!gl) return "";
+      const ext = gl.getExtension("WEBGL_debug_renderer_info");
+      const r = String(gl.getParameter(ext ? ext.UNMASKED_RENDERER_WEBGL : gl.RENDERER) || "");
+      gl.getExtension("WEBGL_lose_context")?.loseContext();
+      return r;
+    } catch (_) { return ""; }
+  }
+
   /* ---------------- API pública ---------------- */
   /* Arquivo novo: a tela de carregamento cobre o intervalo até o primeiro desenho; ela só aparece se
    * demorar mais que um instante (CSS), e o conteúdo entra com um fade quando fica pronto. */
@@ -1198,7 +1288,13 @@
   function setTheme(t) { applyTheme(t); if (!EDITOR_ONLY) draw(); }
 
   window.mirante = {
-    render, setTheme, showWelcome, toggleEditor, zoomBy, getSvg, toast, undo, redo,
+    render, setTheme, showWelcome, toggleEditor, zoomBy, getSvg, toast, undo, redo, openFind, showShortcuts,
+    /* a camada nativa pede um valor: executa fn e responde com {type:"reply"} */
+    __ask: async (id, fn) => {
+      let value = null;
+      try { value = await fn(); } catch (_) { /* value fica null: quem pediu trata como falha */ }
+      post({ type: "reply", id, value: value === undefined ? null : value });
+    },
     fit: () => fit(true),
     _view: () => ({ ...S.view }),       // leitura para diagnóstico
     zoomReset: () => zoomBy(0),
@@ -1239,4 +1335,6 @@
 
   applyTheme(document.documentElement.dataset.theme);
   addEventListener("resize", () => { if (S.popover) closePopover(); setEditorOffset(); placeDock(); positionNodeBar(); });
+  // Tauri: a camada nativa espera este aviso para mandar o arquivo (ou a tela inicial)
+  if (TAURI) post({ type: "ready", theme: S.theme, gpu: EDITOR_ONLY ? "" : gpuRenderer(), cores: navigator.hardwareConcurrency || 4 });
 })();

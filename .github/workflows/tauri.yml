@@ -1,0 +1,156 @@
+name: Tauri
+
+on:
+  push:
+    branches: [tauri]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Compilar (${{ matrix.name }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux
+            os: ubuntu-22.04
+          - name: Windows
+            os: windows-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Dependências do sistema (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq libwebkit2gtk-4.1-dev libxdo-dev librsvg2-dev
+
+      - run: npm ci
+
+      - name: Testes do Rust
+        working-directory: src-tauri
+        run: cargo test
+
+      - name: Gerar instaladores
+        run: npx tauri build
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: mirante-${{ matrix.name }}
+          path: |
+            src-tauri/target/release/bundle/deb/*.deb
+            src-tauri/target/release/bundle/nsis/*.exe
+            src-tauri/target/release/bundle/msi/*.msi
+          if-no-files-found: error
+
+  windows:
+    name: Instalar e abrir (Windows)
+    needs: build
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          name: mirante-Windows
+          path: dist
+
+      - name: Instalar (NSIS, silencioso)
+        shell: pwsh
+        run: |
+          $setup = Get-ChildItem dist -Recurse -Filter *-setup.exe | Select-Object -First 1
+          Write-Host "Instalador: $($setup.Name) ($([math]::Round($setup.Length / 1MB, 1)) MB)"
+          Start-Process $setup.FullName -ArgumentList '/S' -Wait
+          $exe = Get-ChildItem $env:LOCALAPPDATA -Recurse -Filter mirante.exe -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $exe) { throw "mirante.exe não encontrado depois da instalação" }
+          Write-Host "Instalado em $($exe.FullName)"
+          "MIRANTE_EXE=$($exe.FullName)" >> $env:GITHUB_ENV
+
+      - name: Associações de arquivo
+        shell: pwsh
+        run: |
+          foreach ($ext in '.md', '.markdown', '.mmd', '.mermaid') {
+            $k = "HKCU:\Software\Classes\$ext"
+            if (Test-Path $k) { Write-Host "$ext -> $((Get-ItemProperty $k).'(default)')" }
+            else { Write-Host "::warning::$ext não ficou registrado" }
+          }
+
+      - name: Abrir arquivos e capturar a tela
+        shell: pwsh
+        run: |
+          Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+          function Shot($name) {
+            $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+            $bmp = New-Object System.Drawing.Bitmap $b.Width, $b.Height
+            $g = [System.Drawing.Graphics]::FromImage($bmp)
+            $g.CopyFromScreen($b.Location, [System.Drawing.Point]::Empty, $b.Size)
+            $bmp.Save("shots\$name.png"); $g.Dispose(); $bmp.Dispose()
+          }
+          New-Item -ItemType Directory shots | Out-Null
+
+          Start-Process $env:MIRANTE_EXE -ArgumentList "`"$PWD\exemplos\mapa-mental.mmd`""
+          Start-Sleep 15
+          $p = Get-Process mirante -ErrorAction SilentlyContinue
+          if (-not $p) { throw "o Mirante fechou sozinho" }
+          $title = $p.MainWindowTitle
+          Write-Host "Título da janela: $title"
+          Shot "1-mapa-mental"
+
+          # segunda abertura: a instância única tem de mandar o arquivo para o app já aberto
+          Start-Process $env:MIRANTE_EXE -ArgumentList "`"$PWD\exemplos\bem-vindo.md`""
+          Start-Sleep 10
+          $count = @(Get-Process mirante -ErrorAction SilentlyContinue).Count
+          Write-Host "Processos mirante: $count"
+          Shot "2-markdown"
+
+          if ($title -notlike '*mapa-mental.mmd*') { throw "título inesperado: '$title'" }
+          if ($count -ne 1) { throw "instância única falhou: $count processos" }
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: capturas-windows
+          path: shots/
+
+  linux:
+    name: Instalar e abrir (${{ matrix.os }})
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, ubuntu-24.04]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          name: mirante-Linux
+          path: dist
+      - name: Instalar o .deb num sistema limpo
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ./dist/deb/*.deb xvfb imagemagick dbus-x11
+      - name: Abrir um mapa mental e capturar a tela
+        run: |
+          mkdir shots
+          export DISPLAY=:99
+          Xvfb :99 -screen 0 1400x960x24 &
+          sleep 2
+          dbus-run-session -- mirante exemplos/mapa-mental.mmd &
+          sleep 15
+          pgrep -x mirante || { echo "o Mirante fechou sozinho"; exit 1; }
+          import -window root "shots/linux-${{ matrix.os }}.png"
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: capturas-${{ matrix.os }}
+          path: shots/

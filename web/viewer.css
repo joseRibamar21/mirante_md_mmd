@@ -439,11 +439,11 @@ input[type="range"]::-webkit-slider-thumb {
 }
 #shortcuts header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
 #shortcuts h2 { margin: 0; font-size: 17px; font-weight: 700; letter-spacing: -.01em; }
-.sc-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px 28px; }
+.sc-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px 32px; }
 #shortcuts h3 { margin: 0 0 8px; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--fg3); }
 #shortcuts dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 7px 14px; align-items: baseline; font-size: 13px; }
 #shortcuts dt { white-space: nowrap; color: var(--fg2); }
-#shortcuts dd { margin: 0; }
+#shortcuts dd { margin: 0; min-width: 120px; }
 
 /* ---------- editor de código ---------- */
 /* O painel é uma sobreposição e anima SÓ transform/opacity (roda na GPU, sem recalcular layout a

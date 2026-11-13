@@ -201,7 +201,10 @@ fn new_window(app: &AppHandle) -> tauri::Result<WebviewWindow> {
                 api.prevent_close();
                 let l2 = l.clone();
                 ask_unsaved(&h, &l, move |app, choice| match choice {
-                    Choice::Save => save(app, &l2, Some(Box::new(move |app: &AppHandle| destroy(app, &l2)))),
+                    Choice::Save => {
+                        let target = l2.clone();
+                        save(app, &l2, Some(Box::new(move |app: &AppHandle| destroy(app, &target))))
+                    }
                     Choice::Discard => destroy(app, &l2),
                     Choice::Cancel => {}
                 });

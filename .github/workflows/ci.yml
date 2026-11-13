@@ -11,7 +11,7 @@ jobs:
     name: Verificar e gerar o .deb
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Sintaxe (Python, JavaScript, shell)
         run: |
@@ -32,7 +32,7 @@ jobs:
           app="$(sed -n 's/^APP_VERSION = "\(.*\)"/\1/p' mirante/mirante.py)"
           packaging/build-deb.sh "${app}+git${GITHUB_SHA::7}"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: mirante-deb
           path: dist/*.deb
@@ -47,8 +47,8 @@ jobs:
         os: [ubuntu-22.04, ubuntu-24.04]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
         with:
           name: mirante-deb
           path: dist

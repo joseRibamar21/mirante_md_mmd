@@ -13,7 +13,7 @@ jobs:
   release:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Conferir a versão
         run: |
@@ -41,7 +41,7 @@ jobs:
           test "$code" = 124
 
       - name: Publicar a release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           name: Mirante ${{ env.VERSION }}
           generate_release_notes: true

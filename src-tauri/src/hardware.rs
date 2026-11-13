@@ -1,10 +1,13 @@
-//! Escolhe o modo de renderização pelo hardware. A página informa a placa de vídeo (nome do
-//! renderizador WebGL; no Windows vem no formato "ANGLE (AMD, AMD Radeon RX 6700 XT Direct3D11 ...)")
-//! e aqui juntamos núcleos e RAM.
+//! Escolhe o modo de renderização pelo hardware. No Windows a placa vem da página (renderizador
+//! WebGL, formato "ANGLE (AMD, AMD Radeon RX 6700 XT Direct3D11 ...)"). No Linux o WebKitGTK esconde
+//! a placa no WebGL ("Apple GPU") e o número de núcleos, então lemos do próprio sistema.
 
 use serde_json::{json, Value};
 
-pub fn detect(renderer: &str, cores: usize) -> Value {
+pub fn detect(webgl_renderer: &str) -> Value {
+    let renderer = native_gpu().unwrap_or_else(|| webgl_renderer.to_string());
+    let renderer = renderer.as_str();
+    let cores = std::thread::available_parallelism().map(|n| n.get()).unwrap_or(4);
     let ram_gb = total_ram_gb();
     let (mode, reason) = classify(renderer, cores, ram_gb);
     let gpu = gpu_name(renderer);
@@ -56,6 +59,70 @@ fn gpu_name(renderer: &str) -> String {
         name.truncate(i);
     }
     name.trim().to_string()
+}
+
+/// Placa principal pelo /sys/class/drm (a que inicializou a tela), com o nome do banco pci.ids.
+/// Devolve um texto no formato que `classify` entende, ex.: "AMD Radeon RX 6700/6700 XT/6750 XT".
+#[cfg(target_os = "linux")]
+fn native_gpu() -> Option<String> {
+    use std::fs;
+    use std::path::PathBuf;
+    let mut cards: Vec<PathBuf> = fs::read_dir("/sys/class/drm")
+        .ok()?
+        .filter_map(|e| e.ok().map(|e| e.path()))
+        .filter(|p| p.file_name().is_some_and(|n| n.to_string_lossy().strip_prefix("card").is_some_and(|r| r.chars().all(|c| c.is_ascii_digit()))))
+        .collect();
+    cards.sort();
+    let read = |card: &PathBuf, f: &str| fs::read_to_string(card.join("device").join(f)).ok().map(|s| s.trim().to_lowercase());
+    let card = cards.iter().find(|c| read(c, "boot_vga").as_deref() == Some("1")).or(cards.first())?;
+    let vendor = read(card, "vendor")?.trim_start_matches("0x").to_string();
+    let device = read(card, "device")?.trim_start_matches("0x").to_string();
+    let vram_gb = read(card, "mem_info_vram_total").and_then(|s| s.parse::<u64>().ok()).unwrap_or(0) >> 30;
+    let brand = match vendor.as_str() {
+        "1002" => "AMD",
+        "10de" => "NVIDIA",
+        "8086" => "Intel",
+        _ => "",
+    };
+    // "Navi 22 [Radeon RX 6700/6700 XT/6750 XT / 6800M/6850M XT]" → "Radeon RX 6700/6700 XT/6750 XT"
+    let model = pci_name(&vendor, &device).map(|n| {
+        let inner = n.find('[').and_then(|a| n[a + 1..].find(']').map(|b| n[a + 1..a + 1 + b].to_string())).unwrap_or(n.clone());
+        inner.split(" / ").next().unwrap_or(&inner).trim().to_string()
+    });
+    let mut name = match model {
+        Some(m) => format!("{brand} {m}").trim().to_string(),
+        None => format!("{brand} GPU {vendor}:{device}").trim().to_string(),
+    };
+    // pistas para a classificação quando o nome não diz: memória própria = placa dedicada
+    if vendor == "10de" && !name.to_lowercase().contains("geforce") {
+        name.push_str(" (nvidia)");
+    } else if vendor == "1002" && vram_gb >= 2 && !name.to_lowercase().contains("radeon rx") {
+        name.push_str(" (radeon rx)");
+    }
+    Some(name)
+}
+
+#[cfg(target_os = "linux")]
+fn pci_name(vendor: &str, device: &str) -> Option<String> {
+    let text = ["/usr/share/hwdata/pci.ids", "/usr/share/misc/pci.ids", "/usr/share/pci.ids"]
+        .iter()
+        .find_map(|p| std::fs::read_to_string(p).ok())?;
+    let mut in_vendor = false;
+    for line in text.lines() {
+        if !line.starts_with('\t') && !line.starts_with('#') && !line.is_empty() {
+            in_vendor = line.starts_with(&format!("{vendor} "));
+        } else if in_vendor && !line.starts_with("\t\t") {
+            if let Some(rest) = line.strip_prefix('\t').and_then(|l| l.strip_prefix(device)) {
+                return Some(rest.trim().to_string());
+            }
+        }
+    }
+    None
+}
+
+#[cfg(not(target_os = "linux"))]
+fn native_gpu() -> Option<String> {
+    None
 }
 
 #[cfg(target_os = "linux")]

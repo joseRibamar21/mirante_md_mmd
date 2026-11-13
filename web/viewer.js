@@ -1322,5 +1322,5 @@
   applyTheme(document.documentElement.dataset.theme);
   addEventListener("resize", () => { if (S.popover) closePopover(); setEditorOffset(); placeDock(); positionNodeBar(); });
   // Tauri: a camada nativa espera este aviso para mandar o arquivo (ou a tela inicial)
-  if (TAURI) post({ type: "ready", theme: S.theme, gpu: EDITOR_ONLY ? "" : gpuRenderer(), cores: navigator.hardwareConcurrency || 4 });
+  if (TAURI) post({ type: "ready", theme: S.theme, gpu: EDITOR_ONLY ? "" : gpuRenderer() });
 })();

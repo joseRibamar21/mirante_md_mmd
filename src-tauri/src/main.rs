@@ -691,8 +691,7 @@ fn on_ready(app: &AppHandle, label: &str, m: &Value) {
     if let Some(hw) = &cached {
         js(app, label, &format!("mirante.setDetected({hw})"));
     }
-    let cores = m["cores"].as_u64().unwrap_or(4) as usize;
-    let hw = hardware::detect(m["gpu"].as_str().unwrap_or_default(), cores);
+    let hw = hardware::detect(m["gpu"].as_str().unwrap_or_default());
     if cached.as_ref() != Some(&hw) {
         state(app).settings.lock().unwrap().set_hardware(hw.clone());
         js(app, label, &format!("mirante.setDetected({hw})"));

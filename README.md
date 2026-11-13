@@ -50,6 +50,11 @@ edite direto nele: o painel de código fica ao lado e o desenho acompanha enquan
 | <img src="docs/capturas/mapa-radial.png" alt="Mapa mental no layout radial"> | <img src="docs/capturas/mapa-escuro.png" alt="Mapa mental no tema escuro"> |
 | Layout radial | Tema escuro |
 
+<div align="center">
+<img src="docs/capturas/windows.png" width="640" alt="Mirante no Windows 11 com um mapa mental aberto"><br>
+<sub>No Windows 11</sub>
+</div>
+
 ## Instalação
 
 ### Windows 10 e 11

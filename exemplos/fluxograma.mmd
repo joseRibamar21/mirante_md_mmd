@@ -1,0 +1,18 @@
+flowchart TD
+  A([Cliente abre a loja]) --> B[Escolhe os produtos]
+  B --> C{Tem conta?}
+  C -->|Sim| D[Entra]
+  C -->|Não| E[Cadastro rápido]
+  E --> D
+  D --> F[Escolhe o pagamento]
+  F --> G{Pagamento aprovado?}
+  G -->|Sim| H[Separar o pedido]
+  G -->|Não| I[Avisar o cliente]
+  I --> F
+  H --> J[Enviar]
+  J --> K([Pedido entregue])
+
+  subgraph Estoque
+    H
+    J
+  end

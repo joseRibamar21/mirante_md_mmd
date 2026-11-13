@@ -1,0 +1,14 @@
+sequenceDiagram
+  autonumber
+  actor U as Você
+  participant E as Seu editor
+  participant D as Disco
+  participant M as Mirante
+  U->>M: Abre notas.md
+  M->>D: Lê o arquivo
+  M-->>U: Mostra o documento
+  U->>E: Edita e salva
+  E->>D: Grava notas.md
+  D-->>M: Arquivo mudou
+  M-->>U: Atualiza na hora, sem recarregar
+  Note over U,M: Ou edite direto no Mirante com Ctrl+E

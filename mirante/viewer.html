@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mirante</title>
+<link id="gh-css" rel="stylesheet" href="vendor/gh-dark.css">
+<link id="hl-css" rel="stylesheet" href="vendor/hl-dark.css">
+<script>
+  /* tema salvo, injetado pelo app antes do HTML: aplica antes da primeira pintura */
+  (function (t) {
+    if (t !== "light" && t !== "dark") return;
+    document.documentElement.dataset.theme = t;
+    document.getElementById("gh-css").href = "vendor/gh-" + t + ".css";
+    document.getElementById("hl-css").href = "vendor/hl-" + t + ".css";
+  })(window.MIRANTE_THEME);
+</script>
+<link rel="stylesheet" href="viewer.css">
+<script src="vendor/marked.min.js"></script>
+<script src="vendor/purify.min.js"></script>
+<script src="vendor/highlight.min.js"></script>
+<script src="mindmap.js"></script>
+</head>
+<body class="mode-boot">
+<div id="backdrop" aria-hidden="true"><i class="b1"></i><i class="b2"></i><i class="b3"></i><i class="b4"></i></div>
+
+<div id="shell">
+  <aside id="editor" aria-label="Editor de código">
+    <header class="ed-head">
+      <span class="ed-title">Código</span>
+      <span id="ed-pos" class="ed-pos"></span>
+      <button class="icon-btn small" data-cmd="detach" title="Abrir em janela separada"></button>
+      <button class="icon-btn small" data-cmd="toggleEditor" title="Fechar editor (Ctrl+E)"></button>
+    </header>
+    <div class="ed-body">
+      <div id="ed-gutter" aria-hidden="true"></div>
+      <div class="ed-area">
+        <div id="ed-hl" aria-hidden="true"></div>
+        <textarea id="src" spellcheck="false" wrap="off" autocapitalize="off" autocomplete="off"></textarea>
+      </div>
+    </div>
+  </aside>
+  <div id="resizer" title="Arraste para redimensionar"></div>
+
+  <main id="view">
+    <section id="welcome">
+      <div class="glass-card welcome-card">
+        <div class="app-icon">
+          <svg viewBox="0 0 64 64" width="44" height="44" aria-hidden="true"><path fill="#fff" d="M14 50V16h8l10 13 10-13h8v34h-8V29L32 42 22 29v21z"/></svg>
+        </div>
+        <h1>Mirante</h1>
+        <p>Abra um arquivo <b>.md</b> ou <b>.mmd</b> com <kbd>Ctrl</kbd> <kbd>O</kbd><br>ou arraste-o para esta janela.</p>
+        <div id="recent" hidden>
+          <h2>Recentes</h2>
+          <ul id="recent-list"></ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="loading" aria-live="polite">
+      <div class="app-icon ld-icon">
+        <svg viewBox="0 0 64 64" width="40" height="40" aria-hidden="true"><path fill="#fff" d="M14 50V16h8l10 13 10-13h8v34h-8V29L32 42 22 29v21z"/></svg>
+      </div>
+      <div class="ld-bar" aria-hidden="true"><i></i></div>
+      <div id="loading-name" class="ld-name"></div>
+    </section>
+
+    <div id="doc-scroll"><article id="doc" class="markdown-body"></article></div>
+
+    <section id="stage">
+      <div id="canvas"></div>
+      <div id="node-bar" class="glass-pill" hidden></div>
+    </section>
+
+    <div id="toast" class="glass-pill" hidden></div>
+    <div id="syntax-badge" class="glass-pill" hidden><b>Erro de sintaxe</b><span></span></div>
+  </main>
+</div>
+
+<nav id="dock" class="glass-pill" aria-label="Controles de visualização"></nav>
+<div id="dock-hint" aria-hidden="true"></div>
+<div id="popover" class="glass-card" hidden></div>
+
+<script src="viewer.js"></script>
+</body>
+</html>

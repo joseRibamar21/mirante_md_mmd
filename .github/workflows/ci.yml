@@ -1,0 +1,66 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    name: Verificar e gerar o .deb
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Sintaxe (Python, JavaScript, shell)
+        run: |
+          python3 -m py_compile mirante/mirante.py tools/demo/*.py
+          node --check mirante/viewer.js
+          node --check mirante/mindmap.js
+          bash -n mirante/install.sh packaging/build-deb.sh
+
+      - name: Validar .desktop e metainfo
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq desktop-file-utils appstream
+          desktop-file-validate mirante/data/io.github.mirante.Viewer.desktop
+          appstreamcli validate --no-net mirante/data/io.github.mirante.Viewer.metainfo.xml
+
+      - name: Gerar o .deb
+        run: |
+          app="$(sed -n 's/^APP_VERSION = "\(.*\)"/\1/p' mirante/mirante.py)"
+          packaging/build-deb.sh "${app}+git${GITHUB_SHA::7}"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mirante-deb
+          path: dist/*.deb
+          if-no-files-found: error
+
+  smoke:
+    name: Instalar e abrir (${{ matrix.os }})
+    needs: check
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, ubuntu-24.04]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: mirante-deb
+          path: dist
+      - name: Instalar o pacote num sistema limpo
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ./dist/*.deb xvfb dbus-x11
+      - name: Abrir um mapa mental
+        run: |
+          set +e
+          dbus-run-session -- xvfb-run -a timeout 20 mirante exemplos/mapa-mental.mmd
+          code=$?
+          set -e
+          echo "código de saída: $code (124 = ainda aberto quando o tempo acabou)"
+          test "$code" = 124

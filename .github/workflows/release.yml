@@ -1,0 +1,61 @@
+name: Release
+
+# Publica uma versão ao enviar uma tag vX.Y.Z (ela precisa bater com APP_VERSION em mirante/mirante.py):
+#   git tag v2.1.0 && git push origin v2.1.0
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Conferir a versão
+        run: |
+          app="$(sed -n 's/^APP_VERSION = "\(.*\)"/\1/p' mirante/mirante.py)"
+          tag="${GITHUB_REF_NAME#v}"
+          if [ "$app" != "$tag" ]; then
+            echo "::error::A tag $GITHUB_REF_NAME não bate com APP_VERSION = \"$app\" em mirante/mirante.py"
+            exit 1
+          fi
+          echo "VERSION=$tag" >> "$GITHUB_ENV"
+
+      - name: Gerar o .deb
+        run: |
+          packaging/build-deb.sh "$VERSION"
+          cp "dist/mirante_${VERSION}_all.deb" dist/mirante_all.deb   # nome fixo para o link "última versão"
+
+      - name: Testar a instalação
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq "./dist/mirante_${VERSION}_all.deb" xvfb dbus-x11
+          set +e
+          dbus-run-session -- xvfb-run -a timeout 20 mirante exemplos/mapa-mental.mmd
+          code=$?
+          set -e
+          test "$code" = 124
+
+      - name: Publicar a release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Mirante ${{ env.VERSION }}
+          generate_release_notes: true
+          files: |
+            dist/mirante_${{ env.VERSION }}_all.deb
+            dist/mirante_all.deb
+          body: |
+            ## Instalar no Ubuntu 22.04+ ou Debian 12+
+
+            Baixe `mirante_${{ env.VERSION }}_all.deb` abaixo e instale:
+
+            ```bash
+            sudo apt install ./mirante_${{ env.VERSION }}_all.deb
+            ```
+
+            Depois é só procurar **Mirante** no menu de apps ou abrir um `.md`/`.mmd` pelo gerenciador de arquivos.
+            `mirante_all.deb` é o mesmo pacote, com nome fixo para o link de "última versão" do README.

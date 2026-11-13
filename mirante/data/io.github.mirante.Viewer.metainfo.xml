@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.mirante.Viewer</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <name>Mirante</name>
+  <summary>Visualize e edite Markdown e diagramas Mermaid</summary>
+  <developer id="io.github.joseribamar21">
+    <name>José Ribamar</name>
+  </developer>
+  <description>
+    <p>
+      O Mirante abre arquivos Markdown (.md) e diagramas Mermaid (.mmd) com um visual limpo
+      e atualiza sozinho quando o arquivo muda no disco.
+    </p>
+    <ul>
+      <li>Markdown com tabelas, listas de tarefas, código com destaque e diagramas no meio do texto</li>
+      <li>Mapas mentais editáveis: arraste os nós, renomeie e reorganize, com quatro layouts</li>
+      <li>Editor de código ao lado, com o desenho atualizando enquanto você digita</li>
+      <li>Tema claro e escuro, zoom suave e exportação para SVG e PDF</li>
+    </ul>
+  </description>
+  <launchable type="desktop-id">io.github.mirante.Viewer.desktop</launchable>
+  <url type="homepage">https://github.com/joseRibamar21/mirante_md_mmd</url>
+  <url type="bugtracker">https://github.com/joseRibamar21/mirante_md_mmd/issues</url>
+  <screenshots>
+    <screenshot type="default">
+      <caption>Mapa mental com o editor de código ao lado</caption>
+      <image>https://raw.githubusercontent.com/joseRibamar21/mirante_md_mmd/main/docs/capturas/editor.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Markdown com diagrama Mermaid</caption>
+      <image>https://raw.githubusercontent.com/joseRibamar21/mirante_md_mmd/main/docs/capturas/markdown-diagrama.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Tema escuro</caption>
+      <image>https://raw.githubusercontent.com/joseRibamar21/mirante_md_mmd/main/docs/capturas/mapa-escuro.png</image>
+    </screenshot>
+  </screenshots>
+  <provides>
+    <mediatype>text/markdown</mediatype>
+    <mediatype>text/vnd.mermaid</mediatype>
+  </provides>
+  <content_rating type="oars-1.1"/>
+  <releases>
+    <release version="2.0.0" date="2026-11-12">
+      <description>
+        <p>Primeira versão pública: tela inicial com arquivos recentes, carregamento no tema salvo,
+        zoom e movimento a 60 fps em todos os modos e correções no editor e nas preferências.</p>
+      </description>
+    </release>
+  </releases>
+</component>

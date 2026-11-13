@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.pyc
+
+# arquivos de trabalho locais (não publicar)
+local/
+
+# saídas de build
+dist/
+build/
+
+# ferramentas locais
+.claude/
+.vscode/
+.idea/
+*.swp

@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Mirante — renderizador</title>
+<!-- Página invisível, em outro processo do WebKit: desenha os diagramas Mermaid (~400 ms nos grandes)
+     sem travar a janela principal, que só recebe o SVG pronto. Usa as mesmas fontes para medir igual. -->
+<link rel="stylesheet" href="viewer.css">
+<script src="vendor/mermaid.min.js"></script>
+</head>
+<body class="mode-mmd">
+<div id="sandbox" style="position:absolute;left:-99999px;top:0;width:4000px"></div>
+<script>
+(function () {
+  "use strict";
+  const fonts = Promise.all([
+    document.fonts.load('450 13px "Inter Variable"', "Aa"),
+    document.fonts.load('450 13px "Inter Variable"', "çãõ"),
+  ]).catch(() => null);
+  let queue = Promise.resolve(), configKey = "";
+  const latestGen = new Map(); // por janela
+
+  /* Renderiza em fila (o Mermaid não é reentrante). Trabalhos de uma geração já superada são
+   * pulados: se o usuário continuou digitando, ninguém mais precisa daquele resultado. */
+  window.mmRender = (job) => {
+    const ch = job.chan || 0;
+    latestGen.set(ch, Math.max(latestGen.get(ch) || 0, job.gen || 0));
+    const run = async () => {
+      if ((job.gen || 0) < latestGen.get(ch)) return { stale: true };
+      await fonts;
+      const key = JSON.stringify(job.config);
+      if (key !== configKey) { mermaid.initialize(job.config); configKey = key; }
+      const t0 = performance.now();
+      try {
+        const { svg } = await mermaid.render(job.id, job.code, document.getElementById("sandbox"));
+        return { svg, ms: Math.round(performance.now() - t0) };
+      } catch (err) {
+        document.getElementById("d" + job.id)?.remove();
+        return { error: String((err && (err.message || err.str)) || err) };
+      }
+    };
+    const p = queue.then(run, run);
+    queue = p.catch(() => null);
+    return p;
+  };
+  window.mmReady = true;
+})();
+</script>
+</body>
+</html>

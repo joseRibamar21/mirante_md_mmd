@@ -121,6 +121,16 @@ impl Settings {
         self.save();
     }
 
+    /// Idioma escolhido no menu ("pt" ou "en"); `None` = seguir o sistema.
+    pub fn language(&self) -> Option<&str> {
+        self.data["language"].as_str()
+    }
+
+    pub fn set_language(&mut self, lang: Option<&str>) {
+        self.data["language"] = json!(lang);
+        self.save();
+    }
+
     pub fn hardware(&self) -> Option<&Value> {
         self.data.get("hardware").filter(|v| v.is_object())
     }

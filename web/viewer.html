@@ -26,22 +26,24 @@
 <div id="backdrop" aria-hidden="true"><i class="b1"></i><i class="b2"></i><i class="b3"></i><i class="b4"></i></div>
 
 <div id="shell">
-  <aside id="editor" aria-label="Editor de código">
+  <aside id="editor" aria-label="Editor de código" data-i18n-aria="Editor de código">
     <header class="ed-head">
-      <span class="ed-title">Código</span>
+      <span class="ed-title" data-i18n="Código">Código</span>
       <span id="ed-pos" class="ed-pos"></span>
-      <button class="icon-btn small" data-cmd="detach" title="Abrir em janela separada"></button>
-      <button class="icon-btn small" data-cmd="toggleEditor" title="Fechar editor (Ctrl+E)"></button>
+      <button class="icon-btn small" data-cmd="detach" title="Abrir em janela separada" data-i18n-title="Abrir em janela separada"></button>
+      <button class="icon-btn small" data-cmd="toggleEditor" title="Fechar editor (Ctrl+E)" data-i18n-title="Fechar editor (Ctrl+E)"></button>
     </header>
-    <div class="ed-body">
-      <div id="ed-gutter" aria-hidden="true"></div>
-      <div class="ed-area">
-        <div id="ed-hl" aria-hidden="true"></div>
-        <textarea id="src" spellcheck="false" wrap="off" autocapitalize="off" autocomplete="off"></textarea>
+    <div class="ed-body" id="ed-scroll">
+      <div class="ed-inner">
+        <div id="ed-gutter" aria-hidden="true"></div>
+        <div class="ed-area">
+          <div id="ed-hl" aria-hidden="true"></div>
+          <textarea id="src" spellcheck="false" wrap="off" autocapitalize="off" autocomplete="off"></textarea>
+        </div>
       </div>
     </div>
   </aside>
-  <div id="resizer" title="Arraste para redimensionar"></div>
+  <div id="resizer" title="Arraste para redimensionar" data-i18n-title="Arraste para redimensionar"></div>
 
   <main id="view">
     <section id="welcome">
@@ -50,9 +52,9 @@
           <svg viewBox="0 0 64 64" width="44" height="44" aria-hidden="true"><path fill="#fff" d="M14 50V16h8l10 13 10-13h8v34h-8V29L32 42 22 29v21z"/></svg>
         </div>
         <h1>Mirante</h1>
-        <p>Abra um arquivo <b>.md</b> ou <b>.mmd</b> com <kbd>Ctrl</kbd> <kbd>O</kbd><br>ou arraste-o para esta janela.</p>
+        <p data-i18n-html="welcome">Abra um arquivo <b>.md</b>, <b>.mmd</b> ou <b>.gv</b> com <kbd>Ctrl</kbd> <kbd>O</kbd><br>ou arraste-o para esta janela.</p>
         <div id="recent" hidden>
-          <h2>Recentes</h2>
+          <h2 data-i18n="Recentes">Recentes</h2>
           <ul id="recent-list"></ul>
         </div>
       </div>
@@ -74,21 +76,21 @@
     </section>
 
     <div id="toast" class="glass-pill" hidden></div>
-    <div id="syntax-badge" class="glass-pill" hidden><b>Erro de sintaxe</b><span></span></div>
+    <div id="syntax-badge" class="glass-pill" hidden><b data-i18n="Erro de sintaxe">Erro de sintaxe</b><span></span></div>
   </main>
 </div>
 
 <div id="findbar" class="glass-pill" role="search" hidden>
-  <input id="find-input" type="text" placeholder="Buscar no texto" spellcheck="false" autocomplete="off" aria-label="Buscar no texto">
+  <input id="find-input" type="text" placeholder="Buscar no texto" spellcheck="false" autocomplete="off" aria-label="Buscar no texto" data-i18n-ph="Buscar no texto" data-i18n-aria="Buscar no texto">
   <span id="find-count" aria-live="polite"></span>
-  <button class="icon-btn small" data-find="prev" title="Anterior (Shift+Enter)"></button>
-  <button class="icon-btn small" data-find="next" title="Próximo (Enter)"></button>
-  <button class="icon-btn small" data-find="close" title="Fechar (Esc)"></button>
+  <button class="icon-btn small" data-find="prev" title="Anterior (Shift+Enter)" data-i18n-title="Anterior (Shift+Enter)"></button>
+  <button class="icon-btn small" data-find="next" title="Próximo (Enter)" data-i18n-title="Próximo (Enter)"></button>
+  <button class="icon-btn small" data-find="close" title="Fechar (Esc)" data-i18n-title="Fechar (Esc)"></button>
 </div>
 <div id="scrim" hidden></div>
-<section id="shortcuts" class="glass-card" role="dialog" aria-label="Atalhos de teclado" hidden></section>
+<section id="shortcuts" class="glass-card" role="dialog" aria-label="Atalhos de teclado" data-i18n-aria="Atalhos de teclado" hidden></section>
 
-<nav id="dock" class="glass-pill" aria-label="Controles de visualização"></nav>
+<nav id="dock" class="glass-pill" aria-label="Controles de visualização" data-i18n-aria="Controles de visualização"></nav>
 <div id="dock-hint" aria-hidden="true"></div>
 <div id="popover" class="glass-card" hidden></div>
 

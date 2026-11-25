@@ -4,7 +4,7 @@
 
 # Mirante
 
-**Visualizador e editor de Markdown e diagramas Mermaid para Windows e Linux**
+**Visualizador e editor de Markdown e diagramas Mermaid e Graphviz para Windows e Linux**
 
 [![CI](https://github.com/joseRibamar21/mirante_md_mmd/actions/workflows/ci.yml/badge.svg)](https://github.com/joseRibamar21/mirante_md_mmd/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/joseRibamar21/mirante_md_mmd?label=vers%C3%A3o)](https://github.com/joseRibamar21/mirante_md_mmd/releases/latest)
@@ -20,24 +20,29 @@
 
 </div>
 
-O Mirante abre arquivos **Markdown** (`.md`) e diagramas **Mermaid** (`.mmd`) com um visual limpo e
+O Mirante abre arquivos **Markdown** (`.md`) e diagramas **Mermaid** (`.mmd`) e **Graphviz** (`.gv`, `.dot`) com um visual limpo e
 atualiza sozinho quando o arquivo muda no disco. Escreva no seu editor favorito e leia no Mirante, ou
 edite direto nele: o painel de código fica ao lado e o desenho acompanha enquanto você digita.
 
 ## Recursos
 
 - **Markdown completo**: tabelas, listas de tarefas, código com destaque de sintaxe, citações, links
-  internos e diagramas Mermaid no meio do texto.
+  internos e diagramas Mermaid e Graphviz no meio do texto (blocos ` ```mermaid ` e ` ```dot `).
 - **Qualquer diagrama Mermaid** em arquivos `.mmd`: fluxogramas, sequência, Gantt, classes, estados e outros.
+- **Grafos Graphviz** em arquivos `.gv` e `.dot`, com todos os motores de layout (`dot`, `neato`, `circo`,
+  `twopi`, `fdp` e outros, escolhidos pelo atributo `layout` do grafo), sem precisar instalar o Graphviz.
+- **Texto simples** em arquivos `.txt`: abre direto no editor, ocupando a janela, com busca (Ctrl+F) e
+  salvamento como nos outros formatos.
 - **Mapas mentais editáveis**: quatro layouts (dois lados, direita, vertical, radial) além do original do
   Mermaid; arraste um nó sobre outro para mudar de pai, renomeie com duplo clique e crie filhos e irmãos
   pelo teclado, com desfazer e refazer.
 - **Editor ao lado** (<kbd>Ctrl</kbd> <kbd>E</kbd>) ou em janela separada (<kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>O</kbd>),
   com o desenho atualizando ao vivo.
 - **Sempre em dia com o disco**: salvou em outro programa, o Mirante redesenha na hora.
-- **Tela inicial com os arquivos recentes**; links para outros `.md`/`.mmd` e arquivos arrastados para a
+- **Tela inicial com os arquivos recentes**; links para outros `.md`/`.mmd`/`.gv` e arquivos arrastados para a
   janela abrem no próprio app.
 - **Tema claro e escuro**, efeito de vidro e barra de controles que se esconde.
+- **Em português e em inglês**: segue o idioma do sistema, ou escolha em **Exibir → Idioma (Language)**.
 - **Zoom e movimento suaves a 60 fps**, com o modo de renderização escolhido pela sua placa de vídeo.
 - **Buscar** no texto (<kbd>Ctrl</kbd> <kbd>F</kbd>), **exportar** o diagrama em SVG e **imprimir** ou salvar em PDF.
 
@@ -61,8 +66,11 @@ edite direto nele: o painel de código fica ao lado e o desenho acompanha enquan
 
 Baixe e rode o [**instalador**](https://github.com/joseRibamar21/mirante_md_mmd/releases/latest/download/Mirante-windows-x64-setup.exe)
 (cerca de 3 MB; instala só para o seu usuário, sem pedir administrador). Ele registra o Mirante para abrir
-arquivos `.md` e `.mmd`. Também há um [`.msi`](https://github.com/joseRibamar21/mirante_md_mmd/releases/latest/download/Mirante-windows-x64.msi)
+arquivos `.md`, `.mmd` e `.gv`. Também há um [`.msi`](https://github.com/joseRibamar21/mirante_md_mmd/releases/latest/download/Mirante-windows-x64.msi)
 para quem distribui em empresas.
+
+A extensão `.dot` fica de fora do registro porque no Windows ela também é de modelos do Word; abra esses
+arquivos pelo Mirante (<kbd>Ctrl</kbd> <kbd>O</kbd>, arrastando para a janela) ou por **Abrir com**.
 
 > O instalador ainda não tem assinatura digital. Se o Windows mostrar "O Windows protegeu o computador",
 > clique em **Mais informações → Executar assim mesmo**.
@@ -74,7 +82,7 @@ wget https://github.com/joseRibamar21/mirante_md_mmd/releases/latest/download/Mi
 sudo apt install ./Mirante-linux-amd64.deb
 ```
 
-Depois procure **Mirante** no menu de apps, ou abra um `.md`/`.mmd` pelo gerenciador de arquivos.
+Depois procure **Mirante** no menu de apps, ou abra um `.md`/`.mmd`/`.gv` pelo gerenciador de arquivos.
 Para remover: `sudo apt remove mirante`.
 
 ## Atalhos
@@ -106,6 +114,7 @@ A pasta [`exemplos/`](exemplos) tem um arquivo de cada tipo para experimentar:
 | [`mapa-mental.mmd`](exemplos/mapa-mental.mmd) | Mapa mental para testar layouts, arrastar nós e editar |
 | [`fluxograma.mmd`](exemplos/fluxograma.mmd) | Fluxograma com decisões e subgrupo |
 | [`sequencia.mmd`](exemplos/sequencia.mmd) | Diagrama de sequência |
+| [`arquitetura.gv`](exemplos/arquitetura.gv) | Grafo Graphviz com subgrupo e rótulos nas setas |
 
 ## Como funciona
 
@@ -115,13 +124,17 @@ WebKitGTK. Por isso o instalador tem poucos megabytes.
 
 | Pasta / arquivo | Papel |
 | --- | --- |
-| `src-tauri/src/main.rs` | Janelas e menus, abrir/salvar, acompanhar o arquivo no disco, instância única, diálogos |
+| `src-tauri/src/main.rs` | Janelas e menus, abrir/salvar, acompanhar o arquivo no disco, instância única, diálogos, idioma |
 | `src-tauri/src/settings.rs` | Preferências e arquivos recentes |
 | `src-tauri/src/hardware.rs` | Escolha do modo de renderização pela placa de vídeo |
-| `web/viewer.html`, `viewer.js`, `viewer.css` | A página: Markdown, diagramas, editor, busca, zoom e animações |
+| `web/viewer.html`, `viewer.js`, `viewer.css` | A página: Markdown, diagramas, editor, busca, zoom, animações e os textos em inglês |
 | `web/mindmap.js` | Motor do mapa mental: leitura da sintaxe, layouts, desenho e edição |
-| `web/vendor/` | Mermaid, marked, DOMPurify, highlight.js e a fonte Inter ([licenças](web/vendor/LICENSES.md)) |
+| `web/vendor/` | Mermaid, Graphviz (Viz.js), marked, DOMPurify, highlight.js e a fonte Inter ([licenças](web/vendor/LICENSES.md)) |
 | `packaging/` | Ícone, atalho do menu, tipo `.mmd` e metainfo do Linux |
+
+**Traduções.** O texto em português é a própria chave: na página, `tr("Salvar")` busca a versão
+inglesa no dicionário `EN` do `viewer.js`; no Rust, `tr(app, "Salvar", "Save")`. Um texto novo na
+interface precisa da versão em inglês nos dois lugares em que aparecer.
 
 As preferências e a lista de recentes (só nome e caminho de cada arquivo) ficam em
 `~/.config/mirante/settings.json` no Linux e em `%APPDATA%\mirante\settings.json` no Windows.

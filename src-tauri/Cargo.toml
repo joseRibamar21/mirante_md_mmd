@@ -18,10 +18,13 @@ tauri-plugin-opener = "2.7.3"
 tauri-plugin-single-instance = "2.5.5"
 
 [build-dependencies]
-tauri-build = "2.7.4"
+tauri-build = { version = "2.7.4", features = [] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+gtk = "0.18.2"
 
 [target."cfg(windows)".dependencies]
-windows-sys = { version = "0.61.2", features = ["Win32_System_SystemInformation"] }
+windows-sys = { version = "0.61.2", features = ["Win32_Globalization", "Win32_System_SystemInformation"] }
 
 [profile.release]
 strip = true

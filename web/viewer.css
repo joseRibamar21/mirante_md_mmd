@@ -40,6 +40,7 @@
   --hover: rgba(0, 0, 0, .05);
   --active: rgba(0, 0, 0, .09);
   --shadow: 0 10px 30px rgba(30, 40, 80, .12), 0 1px 3px rgba(30, 40, 80, .08);
+  --shadow-float: 0 24px 64px rgba(30, 40, 80, .20), 0 6px 18px rgba(30, 40, 80, .10), 0 1px 3px rgba(30, 40, 80, .08);
   --node-shadow: 0 6px 18px rgba(30, 40, 80, .10), 0 1px 2px rgba(30, 40, 80, .06);
   --err-bg: rgba(255, 59, 48, .10);
   --err-fg: #d70015;
@@ -66,6 +67,7 @@
   --hover: rgba(255, 255, 255, .07);
   --active: rgba(255, 255, 255, .13);
   --shadow: 0 12px 36px rgba(0, 0, 0, .45), 0 1px 3px rgba(0, 0, 0, .3);
+  --shadow-float: 0 26px 70px rgba(0, 0, 0, .62), 0 8px 22px rgba(0, 0, 0, .38), 0 1px 3px rgba(0, 0, 0, .3);
   --node-shadow: 0 8px 22px rgba(0, 0, 0, .32), 0 1px 2px rgba(0, 0, 0, .25);
   --err-bg: rgba(255, 69, 58, .14);
   --err-fg: #ff9a92;
@@ -188,12 +190,8 @@ kbd {
   font-family: var(--font) !important; font-size: 15px; line-height: 1.65;
   max-width: 880px; margin: 0 auto; padding: 44px 56px 56px;
   color: var(--fg) !important;
-  background: var(--glass-strong) !important;
-  -webkit-backdrop-filter: blur(30px) saturate(170%); backdrop-filter: blur(30px) saturate(170%);
-  border: 1px solid var(--glass-border); border-radius: 24px;
-  box-shadow: var(--shadow), inset 0 1px 0 var(--glass-hi);
+  background: transparent !important;   /* o texto fica solto sobre o fundo, sem cartão */
 }
-body.no-glass .markdown-body { -webkit-backdrop-filter: none; backdrop-filter: none; background: var(--glass-solid) !important; }
 .markdown-body h1, .markdown-body h2 { letter-spacing: -.02em; border-bottom-color: var(--sep) !important; }
 .markdown-body h1 { font-weight: 750; }
 .markdown-body pre, .markdown-body code { font-family: var(--mono) !important; }
@@ -286,6 +284,8 @@ body.no-glass .mm-node.mm-root { background: linear-gradient(140deg, #409cff, #5
 .mermaid-host .cluster rect { rx: 18px; ry: 18px; fill-opacity: .25 !important; }
 .mermaid-host .edgeLabel, .mermaid-host .edgeLabel p { background: transparent !important; }
 .mermaid-host .labelBkg { background: var(--glass-strong) !important; border-radius: 6px; }
+/* Graphviz: as cores são as do arquivo, sem o vidro do Mermaid */
+.mermaid-host.gv .node > *, .mermaid-host.gv .cluster > * { fill-opacity: 1; filter: none; }
 
 /* ---------- erros ---------- */
 .render-error {
@@ -357,6 +357,11 @@ body.dock-autohide:not(.dock-peek):not(.mode-welcome) #dock-hint { opacity: .6; 
 #popover h3 { margin: 0 0 12px; font-size: 13px; font-weight: 650; color: var(--fg2); letter-spacing: .01em; text-transform: uppercase; }
 #popover h3.sub { margin: 16px 0 8px; padding-top: 12px; border-top: 1px solid var(--sep); }
 #popover { width: 330px; }
+/* troca de tema sem View Transitions */
+.theme-fade, .theme-fade * {
+  transition: background-color .5s var(--ease), color .5s var(--ease), border-color .5s var(--ease),
+    fill .5s var(--ease), stroke .5s var(--ease) !important;
+}
 .seg-text { display: flex; padding: 2px; border-radius: 10px; background: var(--hover); }
 .seg-text button {
   flex: 1; height: 28px; border: 0; border-radius: 8px; background: transparent; color: var(--fg2);
@@ -369,12 +374,12 @@ body.dock-autohide:not(.dock-peek):not(.mode-welcome) #dock-hint { opacity: .6; 
 
 /* modo desempenho: sem sombras, sem desfoque e sem filtros SVG (o que mais pesa para pintar) */
 body.fx-lite .mm-node, body.fx-lite .mm-node.mm-root { box-shadow: none !important; }
-body.fx-lite .glass-card, body.fx-lite .glass-pill, body.fx-lite .markdown-body {
+body.fx-lite .glass-card, body.fx-lite .glass-pill {
   -webkit-backdrop-filter: none !important; backdrop-filter: none !important; background: var(--glass-solid) !important;
 }
 body.fx-lite .mermaid-host .node rect, body.fx-lite .mermaid-host .node polygon, body.fx-lite .mermaid-host .node circle,
 body.fx-lite .mermaid-host .node path, body.fx-lite .mermaid-host rect.actor, body.fx-lite .mermaid-host .label-container { filter: none !important; }
-body.fx-lite #editor { box-shadow: none; }
+/* o editor mantém a sombra: é uma só, parada, e é ela que mostra que o painel flutua sobre o conteúdo */
 .pref-row { margin-bottom: 14px; }
 .pref-row label { display: flex; justify-content: space-between; margin-bottom: 7px; font-weight: 550; }
 .pref-row label span { color: var(--fg2); font-variant-numeric: tabular-nums; font-weight: 500; }
@@ -452,7 +457,7 @@ input[type="range"]::-webkit-slider-thumb {
   position: absolute; z-index: 5; left: 10px; top: 10px; bottom: 10px; width: var(--ed-w); max-width: 75vw;
   display: flex; flex-direction: column; border-radius: 18px; overflow: hidden;
   background: color-mix(in srgb, var(--glass-solid) 94%, transparent);
-  border: 1px solid var(--glass-border); box-shadow: var(--shadow), inset 0 1px 0 var(--glass-hi);
+  border: 1px solid var(--glass-border); box-shadow: var(--shadow-float), inset 0 1px 0 var(--glass-hi);
   opacity: 0; transform: translateX(calc(-100% - 24px)); visibility: hidden; pointer-events: none;
   transition: transform .44s var(--spring), opacity .3s ease, visibility 0s linear .44s;
 }
@@ -464,23 +469,28 @@ body.mode-welcome #editor, body.mode-welcome #resizer, body.mode-boot #editor, b
 .ed-head { display: flex; align-items: center; gap: 4px; padding: 8px 8px 8px 16px; border-bottom: 1px solid var(--sep); }
 .ed-title { font-weight: 650; font-size: 13px; margin-right: 4px; }
 .ed-pos { flex: 1; color: var(--fg3); font-size: 12px; font-variant-numeric: tabular-nums; }
-.ed-body { position: relative; flex: 1; display: flex; min-height: 0; }
+/* Uma rolagem só (a .ed-body) para os números e o texto: o <textarea> cresce até o tamanho do texto
+ * (viewer.js, sizeEditor) e não rola por dentro. Assim a rolagem é a nativa e suave, igual à do
+ * Markdown, e os números nunca ficam um quadro atrás do texto. */
+.ed-body { position: relative; flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; scroll-padding-left: 46px; }
+.ed-inner { display: flex; width: max-content; min-width: 100%; min-height: 100%; }
 /* altura de linha em px inteiros: com 1.65 (20,625px) o WebKit arredondava cada linha para 20px
    e o destaque da linha ia escorregando para baixo */
 #ed-gutter {
-  flex: none; width: 46px; padding: 12px 10px 12px 0; text-align: right; overflow: hidden;
+  flex: none; width: 46px; padding: 12px 10px 12px 0; text-align: right;
   font: 12.5px/20px var(--mono); color: var(--fg3); user-select: none; white-space: pre;
   border-right: 1px solid var(--sep);
+  position: sticky; left: 0; z-index: 2; background: var(--glass-solid);   /* fica no lugar ao rolar para o lado */
 }
-.ed-area { position: relative; flex: 1; min-width: 0; }
+.ed-area { position: relative; flex: 1 0 auto; }
 #ed-hl {
-  position: absolute; left: 0; right: 0; height: 20px; pointer-events: none;
+  position: absolute; left: 0; right: 0; top: 12px; height: 20px; pointer-events: none;
   background: color-mix(in srgb, var(--accent) 13%, transparent); border-left: 2px solid var(--accent);
 }
 #src {
-  position: absolute; inset: 0; width: 100%; height: 100%; resize: none; border: 0; outline: none;
+  position: relative; display: block; width: 100%; resize: none; border: 0; outline: none; margin: 0;
   padding: 12px 14px; background: transparent; color: var(--fg); caret-color: var(--accent);
-  font: 12.5px/20px var(--mono); tab-size: 2; white-space: pre; overflow: auto;
+  font: 12.5px/20px var(--mono); tab-size: 2; white-space: pre; overflow: hidden;
 }
 #src::selection { background: color-mix(in srgb, var(--accent) 35%, transparent); }
 #resizer {
@@ -495,10 +505,14 @@ body.resizing #editor { transition: none !important; }
 }
 #resizer:hover::after { opacity: 1; }
 
-/* janela separada só com o editor (viewer.html?editor=1) */
+/* janela separada só com o editor (viewer.html?editor=1) e texto simples (.txt): o editor é a janela */
 body.editor-only #view, body.editor-only #dock, body.editor-only #dock-hint,
 body.editor-only #resizer, body.editor-only #popover { display: none !important; }
-body.editor-only #editor {
+@media screen {
+  body.mode-txt #view, body.mode-txt #dock, body.mode-txt #dock-hint, body.mode-txt #resizer,
+  body.mode-txt #popover, body.mode-txt .ed-head .icon-btn { display: none !important; }
+}
+body.editor-only #editor, body.mode-txt #editor {
   left: 10px; right: 10px; width: auto; max-width: none; opacity: 1; transform: none;
   visibility: visible; pointer-events: auto; transition: none;
 }
@@ -521,4 +535,5 @@ body.editor-open .zoom-label { display: none; }
   html, body { overflow: visible; height: auto; background: #fff; }
   #shell, #view, #doc-scroll { position: static; height: auto; overflow: visible; display: block; padding: 0; }
   .markdown-body { box-shadow: none; border: none; max-width: none; padding: 0; background: #fff !important; }
+  .markdown-body pre.txt-print { white-space: pre-wrap; background: none !important; border: 0; padding: 0; font-size: 11px; color: #000; }
 }

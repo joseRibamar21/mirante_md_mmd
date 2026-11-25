@@ -6,6 +6,7 @@ o texto completo está em [`licenses/`](licenses/).
 | Arquivo | Projeto | Versão | Licença |
 | --- | --- | --- | --- |
 | `mermaid.min.js` | [Mermaid](https://github.com/mermaid-js/mermaid) | 11 | MIT · [texto](licenses/mermaid-MIT.txt) |
+| `viz-global.js` | [Viz.js](https://github.com/mdaines/viz-js), com [Graphviz](https://graphviz.org) 16.1.0 e [Expat](https://libexpat.github.io) | 3.31.0 | MIT · [texto](licenses/viz-js-MIT.txt); Graphviz: EPL-2.0 · [texto](licenses/graphviz-EPL-2.0.txt); Expat: MIT · [texto](licenses/expat-MIT.txt) |
 | `marked.min.js` | [marked](https://github.com/markedjs/marked) | 15.0.12 | MIT · [texto](licenses/marked-MIT.txt) |
 | `purify.min.js` | [DOMPurify](https://github.com/cure53/DOMPurify) | 3.2.4 | Apache-2.0 ou MPL-2.0 · [texto](licenses/dompurify-Apache-2.0.txt) |
 | `highlight.min.js`, `hl-light.css`, `hl-dark.css` | [highlight.js](https://github.com/highlightjs/highlight.js) | 11.11.1 | BSD-3-Clause · [texto](licenses/highlightjs-BSD-3-Clause.txt) |

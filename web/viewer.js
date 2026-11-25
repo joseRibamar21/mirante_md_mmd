@@ -10,7 +10,7 @@
   const E = {
     doc: $("doc"), docScroll: $("doc-scroll"), stage: $("stage"), canvas: $("canvas"),
     dock: $("dock"), pop: $("popover"), nodeBar: $("node-bar"), toast: $("toast"),
-    src: $("src"), gutter: $("ed-gutter"), hl: $("ed-hl"), pos: $("ed-pos"), resizer: $("resizer"),
+    src: $("src"), scroll: $("ed-scroll"), gutter: $("ed-gutter"), hl: $("ed-hl"), pos: $("ed-pos"), resizer: $("resizer"),
     view: $("view"), editor: $("editor"), hint: $("dock-hint"),
   };
   /* viewer.html?editor=1 → janela separada só com o editor; o texto "de verdade" fica na janela principal */
@@ -23,7 +23,7 @@
   const MD_ZOOM = [0.6, 0.7, 0.8, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2];
 
   const S = {
-    kind: null, sub: null, path: null, text: "", saved: "", dirty: false,
+    kind: null, sub: null, lang: null, path: null, text: "", saved: "", dirty: false,
     prefs: { ...DEFAULTS }, theme: "dark",
     view: { x: 0, y: 0, s: 1 }, bounds: { w: 0, h: 0 }, mdZoom: 1, hasFit: false,
     parsed: null, els: null, selected: null, editing: null,
@@ -39,6 +39,75 @@
   const IN_APP = !!TAURI || !!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.mirante);
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const escapeHtml = (s) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+  /* ---------------- idioma ----------------
+   * O texto em português é a própria chave: tr("Salvar") devolve "Save" com a interface em inglês, e o
+   * que faltar no dicionário aparece em português. {n} e afins são trocados pelos valores. O app
+   * injeta MIRANTE_LANG antes do HTML; fora dele vale o idioma do navegador. */
+  const EN = {
+    "Código": "Code", "Texto": "Text", "Editor de código": "Code editor", "Abrir em janela separada": "Open in a separate window",
+    "Fechar editor (Ctrl+E)": "Close editor (Ctrl+E)", "Arraste para redimensionar": "Drag to resize",
+    "Voltar o editor para a janela principal": "Move the editor back to the main window",
+    welcome: "Open a <b>.md</b>, <b>.mmd</b>, <b>.gv</b> or <b>.txt</b> file with <kbd>Ctrl</kbd> <kbd>O</kbd><br>or drag it into this window.",
+    "Recentes": "Recent", "Erro de sintaxe": "Syntax error", "(mostrando a última versão válida)": "(showing the last valid version)",
+    "Buscar no texto": "Find in text", "Anterior (Shift+Enter)": "Previous (Shift+Enter)", "Próximo (Enter)": "Next (Enter)",
+    "Fechar (Esc)": "Close (Esc)", "Atalhos de teclado": "Keyboard shortcuts", "Controles de visualização": "View controls",
+    "Erro no diagrama Mermaid": "Mermaid diagram error", "Erro no grafo Graphviz": "Graphviz graph error",
+    "não foi possível carregar o Mermaid": "could not load Mermaid", "não foi possível carregar o Graphviz": "could not load Graphviz",
+    "grafo inválido": "invalid graph",
+    "Desempenho": "Performance", "Equilibrado": "Balanced", "Qualidade": "Quality", "Auto": "Auto",
+    "Adicionar filho (Tab)": "Add child (Tab)", "Filho": "Child", "Adicionar irmão (Enter)": "Add sibling (Enter)",
+    "Irmão": "Sibling", "Renomear (F2 ou duplo clique)": "Rename (F2 or double-click)",
+    "Excluir com os filhos (Delete)": "Delete with children (Delete)",
+    "Nada para desfazer": "Nothing to undo", "Nada para refazer": "Nothing to redo",
+    "Ir para a janela de código": "Go to the code window", "Editor de código (Ctrl+E)": "Code editor (Ctrl+E)",
+    "Dois lados": "Both sides", "Para a direita": "To the right", "Vertical (de cima para baixo)": "Vertical (top to bottom)",
+    "Radial": "Radial", "Original do Mermaid": "Mermaid original",
+    "Espaçamento e aparência": "Spacing and appearance", "Aparência": "Appearance", "Espaçamento": "Spacing",
+    "Direção definida no arquivo": "Direction set in the file", "De cima para baixo": "Top to bottom",
+    "Da esquerda para a direita": "Left to right", "De baixo para cima": "Bottom to top", "Da direita para a esquerda": "Right to left",
+    "Diminuir (Ctrl −)": "Zoom out (Ctrl −)", "Tamanho original (Ctrl 0)": "Actual size (Ctrl 0)", "Aumentar (Ctrl +)": "Zoom in (Ctrl +)",
+    "Ajustar à janela": "Fit to window", "Desfazer (Ctrl Z)": "Undo (Ctrl Z)", "Refazer (Ctrl Shift Z)": "Redo (Ctrl Shift Z)",
+    "Tema claro (Ctrl D)": "Light theme (Ctrl D)", "Tema escuro (Ctrl D)": "Dark theme (Ctrl D)",
+    "Distância entre níveis": "Distance between levels", "Distância entre irmãos": "Distance between siblings",
+    "Largura máxima do cartão": "Maximum card width", "Distância entre nós": "Distance between nodes",
+    "Renderização": "Rendering", "Usando <b>{mode}</b>": "Using <b>{mode}</b>",
+    "Recomendado para este computador: <b>{mode}</b>": "Recommended for this computer: <b>{mode}</b>",
+    "Efeito vidro": "Glass effect", "Ocultar esta barra automaticamente": "Hide this bar automatically",
+    "Restaurar padrão": "Restore defaults",
+    "{n} núcleos": "{n} cores", "GPU não identificada": "Unidentified GPU", "sem aceleração de GPU": "no GPU acceleration",
+    "GPU dedicada": "dedicated GPU", "GPU dedicada, CPU/RAM modestas": "dedicated GPU, modest CPU/RAM",
+    "GPU integrada": "integrated GPU", "GPU integrada e máquina modesta": "integrated GPU on a modest machine",
+    "máquina modesta": "modest machine",
+    "1 resultado": "1 result", "{n} resultados": "{n} results", "Nenhum resultado": "No results",
+    "Geral": "General", "Abrir arquivo": "Open file", "Salvar": "Save", "Recarregar do disco": "Reload from disk",
+    "Buscar": "Find", "Tema claro / escuro": "Light / dark theme", "Desfazer · refazer": "Undo · redo",
+    "Imprimir / PDF": "Print / PDF", "Exportar SVG": "Export SVG", "Nova janela": "New window", "Fechar janela": "Close window",
+    "Visualização": "View", "Ctrl + roda, pinça": "Ctrl + wheel, pinch", "Zoom": "Zoom",
+    "Arrastar o fundo, roda": "Drag the background, wheel", "Mover o diagrama": "Move the diagram",
+    "Mapa mental": "Mind map", "Clique": "Click", "Selecionar nó": "Select node", "Duplo clique, F2": "Double-click, F2",
+    "Renomear": "Rename", "Adicionar filho": "Add child", "Adicionar irmão": "Add sibling", "Excluir nó e filhos": "Delete node and children",
+    "Setas": "Arrows", "Navegar entre nós": "Move between nodes", "Mover entre irmãos": "Move among siblings",
+    "Arrastar nó sobre outro": "Drag a node onto another", "Mudar de pai": "Change parent",
+  };
+  const PT = { welcome: "Abra um arquivo <b>.md</b>, <b>.mmd</b>, <b>.gv</b> ou <b>.txt</b> com <kbd>Ctrl</kbd> <kbd>O</kbd><br>ou arraste-o para esta janela." };
+  const langOf = (l) => (/^pt/i.test(l || "") ? "pt" : "en");
+  let LANG = langOf(window.MIRANTE_LANG || navigator.language);
+  function tr(s, vars) {
+    let out = (LANG === "en" ? EN[s] : PT[s]) || s;
+    if (vars) out = out.replace(/\{(\w+)\}/g, (m, k) => (k in vars ? vars[k] : m));
+    return out;
+  }
+  /* textos fixos do HTML: data-i18n (texto), -html, -title, -aria, -ph (placeholder) */
+  function applyStaticText() {
+    document.documentElement.lang = LANG === "en" ? "en" : "pt-BR";
+    document.querySelectorAll("[data-i18n]").forEach((el) => { el.textContent = tr(el.dataset.i18n); });
+    document.querySelectorAll("[data-i18n-html]").forEach((el) => { el.innerHTML = tr(el.dataset.i18nHtml); });
+    document.querySelectorAll("[data-i18n-title]").forEach((el) => { el.title = tr(el.dataset.i18nTitle); });
+    document.querySelectorAll("[data-i18n-aria]").forEach((el) => el.setAttribute("aria-label", tr(el.dataset.i18nAria)));
+    document.querySelectorAll("[data-i18n-ph]").forEach((el) => { el.placeholder = tr(el.dataset.i18nPh); });
+    window.MiranteMindmap?.setLang(LANG);
+  }
 
   /* ---------------- ícones ---------------- */
   const P = {
@@ -71,7 +140,8 @@
   document.querySelector('#editor [data-cmd="toggleEditor"]').innerHTML = icon("close");
   const detachBtn = document.querySelector('#editor [data-cmd="detach"]');
   detachBtn.innerHTML = icon(EDITOR_ONLY ? "attach" : "external");
-  if (EDITOR_ONLY) detachBtn.title = "Voltar o editor para a janela principal";
+  if (EDITOR_ONLY) detachBtn.dataset.i18nTitle = "Voltar o editor para a janela principal";
+  applyStaticText();
 
   /* ---------------- tema / mermaid ---------------- */
   const vendorUrl = (n) => new URL("vendor/" + n, APP_BASE).href;
@@ -127,7 +197,7 @@
     b.href = href || APP_BASE;
   }
   function setMode(kind) {
-    body.classList.remove("mode-boot", "mode-welcome", "mode-md", "mode-mmd");
+    body.classList.remove("mode-boot", "mode-welcome", "mode-md", "mode-mmd", "mode-txt");
     body.classList.add("mode-" + (kind || "welcome"));
   }
   function errorBox(title, err) {
@@ -159,6 +229,7 @@
       code(token) {
         const lang = (token.lang || "").trim().split(/\s+/)[0].toLowerCase();
         if (lang === "mermaid" || lang === "mmd") return `<div class="mermaid-block" data-mermaid="${encodeURIComponent(token.text)}"></div>`;
+        if (lang === "dot" || lang === "graphviz" || lang === "gv") return `<div class="mermaid-block" data-dot="${encodeURIComponent(token.text)}"></div>`;
         let html;
         try {
           html = lang && hljs.getLanguage(lang) ? hljs.highlight(token.text, { language: lang, ignoreIllegals: true }).value : escapeHtml(token.text);
@@ -191,7 +262,7 @@
       const sc = document.createElement("script");
       sc.src = vendorUrl("mermaid.min.js");
       sc.onload = () => ok();
-      sc.onerror = () => { mermaidLoad = null; fail(new Error("não foi possível carregar o Mermaid")); };
+      sc.onerror = () => { mermaidLoad = null; fail(new Error(tr("não foi possível carregar o Mermaid"))); };
       document.head.appendChild(sc);
     }));
   }
@@ -212,15 +283,21 @@
   async function mermaidInto(el, code, my) {
     const r = await mermaidSvg(code, my);
     if (my !== S.seq || r.stale) return false;
-    if (r.error) { el.innerHTML = errorBox("Erro no diagrama Mermaid", r.error); return false; }
+    if (r.error) { el.innerHTML = errorBox(tr("Erro no diagrama Mermaid"), r.error); return false; }
     el.innerHTML = r.svg;
     return true;
   }
   async function renderMarkdown(my) {
     const raw = marked.parse(S.text.replace(/^﻿?---\r?\n[\s\S]*?\r?\n(---|\.\.\.)\r?\n?/, ""));
-    E.doc.innerHTML = DOMPurify.sanitize(raw, { ADD_ATTR: ["data-mermaid", "target"] });
+    E.doc.innerHTML = DOMPurify.sanitize(raw, { ADD_ATTR: ["data-mermaid", "data-dot", "target"] });
     addHeadingIds(E.doc);
     for (const el of E.doc.querySelectorAll(".mermaid-block")) {
+      if (el.dataset.dot != null) {
+        const r = await dotSvg(decodeURIComponent(el.dataset.dot));
+        if (my !== S.seq) return;
+        el.innerHTML = r.error ? errorBox(tr("Erro no grafo Graphviz"), r.error) : r.svg;
+        continue;
+      }
       const code = decodeURIComponent(el.dataset.mermaid || "");
       if (detectSub(code) === "mindmap" && S.prefs.layout !== "mermaid") {
         el.classList.add("mm-inline");
@@ -240,9 +317,57 @@
     }
   }
 
-  /* ---------------- diagrama (.mmd) ---------------- */
+  /* ---------------- Graphviz (.gv / .dot) ----------------
+   * viz-global.js (Graphviz compilado para WebAssembly, ~1,3 MB) só é carregado quando um grafo aparece.
+   * As cores do tema entram como atributos padrão (-G/-N/-E): o que o arquivo define continua valendo. */
+  let vizLoad = null;
+  function loadViz() {
+    if (!vizLoad) {
+      vizLoad = new Promise((ok, fail) => {
+        const sc = document.createElement("script");
+        sc.src = vendorUrl("viz-global.js");
+        sc.onload = () => window.Viz.instance().then(ok, fail);
+        sc.onerror = () => fail(new Error(tr("não foi possível carregar o Graphviz")));
+        document.head.appendChild(sc);
+      });
+      vizLoad.catch(() => { vizLoad = null; });
+    }
+    return vizLoad;
+  }
+  const DOT_ENGINES = ["dot", "neato", "fdp", "sfdp", "circo", "twopi", "osage", "patchwork"];
+  function dotOptions(code) {
+    const dark = S.theme === "dark", font = "Helvetica,Arial,sans-serif";
+    const fg = dark ? "#f5f5f7" : "#1c1c1e", line = dark ? "#8e8e93" : "#6e6e73";
+    // o motor vem do atributo `layout` do grafo; o Viz.js só olha a opção `engine`
+    const m = /\blayout\s*=\s*"?([a-z]+)/i.exec(code), engine = m && m[1].toLowerCase();
+    return {
+      format: "svg", engine: DOT_ENGINES.includes(engine) ? engine : "dot",
+      graphAttributes: { bgcolor: "transparent", fontcolor: fg, fontname: font, color: dark ? "#3a3d4a" : "#c7cad3" },
+      nodeAttributes: { color: dark ? "#0A84FF" : "#007AFF", fontcolor: fg, fontname: font },
+      edgeAttributes: { color: line, fontcolor: fg, fontname: font, fontsize: 12 },
+    };
+  }
+  async function dotSvg(code) {
+    const key = cacheKey("dot\u0002" + code), hit = cacheGet(key);
+    if (hit) return { svg: hit };
+    let viz;
+    try { viz = await loadViz(); } catch (err) { return { error: String(err.message || err) }; }
+    let r;
+    try { r = viz.render(code, dotOptions(code)); } catch (err) { return { error: String(err.message || err) }; }
+    if (r.status !== "success") {
+      const msgs = r.errors.filter((e) => e.level === "error").map((e) => e.message);
+      return { error: (msgs.length ? msgs : r.errors.map((e) => e.message)).join("\n") || tr("grafo inválido") };
+    }
+    // sem o prólogo XML; links e atributos perigosos saem pelo DOMPurify
+    const svg = DOMPurify.sanitize(r.output.slice(r.output.indexOf("<svg")), { USE_PROFILES: { svg: true, svgFilters: true } });
+    cachePut(key, svg);
+    return { svg };
+  }
+
+  /* ---------------- diagrama (.mmd, .gv) ---------------- */
   async function renderDiagram(my, live, force) {
-    S.sub = detectSub(S.text);
+    const isDot = S.lang === "dot";
+    S.sub = isDot ? "graphviz" : detectSub(S.text);
     const c = E.canvas;
     const drawKey = JSON.stringify([S.text, S.theme, S.prefs.layout, S.prefs.levelGap, S.prefs.siblingGap, S.prefs.cardWidth,
       S.prefs.dir, S.prefs.nodeSpacing, S.prefs.rankSpacing]);
@@ -260,7 +385,7 @@
       return;
     }
     const code = S.sub === "flowchart" && S.prefs.dir ? setFlowDir(S.text, S.prefs.dir) : S.text;
-    const r = await mermaidSvg(code, my);
+    const r = isDot ? await dotSvg(code) : await mermaidSvg(code, my);
     if (my !== S.seq || r.stale) return "kept";
     if (r.error && live && c.querySelector(".mermaid-host svg")) {
       showSyntaxBadge(r.error); // digitando: o último diagrama válido continua na tela
@@ -270,9 +395,9 @@
     S.drawKey = drawKey;
     S.parsed = null; S.els = null; hideNodeBar();
     const tmp = document.createElement("div");
-    tmp.className = "mermaid-host";
+    tmp.className = isDot ? "mermaid-host gv" : "mermaid-host";
     const ok = !r.error;
-    tmp.innerHTML = ok ? r.svg : errorBox("Erro no diagrama Mermaid", r.error);
+    tmp.innerHTML = ok ? r.svg : errorBox(tr(isDot ? "Erro no grafo Graphviz" : "Erro no diagrama Mermaid"), r.error);
     c.className = ""; c.innerHTML = ""; c.appendChild(tmp);
     S.zoomed = null;
     const svg = tmp.querySelector("svg");
@@ -302,6 +427,8 @@
       if (my !== S.seq) return;
       if (r !== "kept") S.lastDrawMs = performance.now() - t0;
       if (o.fit || !S.hasFit) fit(); else applyView();
+    } else if (S.kind === "txt") {
+      E.doc.innerHTML = `<pre class="txt-print">${escapeHtml(S.text)}</pre>`;
     }
     buildDock();
   }
@@ -313,7 +440,7 @@
   function showSyntaxBadge(err) {
     const b = $("syntax-badge");
     const msg = String((err && (err.message || err.str)) || err).split("\n").slice(0, 3).join("\n");
-    b.querySelector("span").textContent = msg + "\n(mostrando a última versão válida)";
+    b.querySelector("span").textContent = msg + "\n" + tr("(mostrando a última versão válida)");
     b.hidden = false;
   }
   function hideSyntaxBadge() { $("syntax-badge").hidden = true; }
@@ -338,6 +465,18 @@
   };
   const MODE_NAMES = { performance: "Desempenho", balanced: "Equilibrado", quality: "Qualidade" };
   S.detected = { mode: "balanced", label: "" };
+  /* a camada nativa manda a placa e o motivo da escolha como dados; o texto é montado aqui, no idioma
+   * da interface (resultados guardados por versões antigas só trazem `label`, já em português) */
+  const REASONS = {
+    "no-gpu": "sem aceleração de GPU", dedicated: "GPU dedicada", "dedicated-modest": "GPU dedicada, CPU/RAM modestas",
+    integrated: "GPU integrada", "integrated-modest": "GPU integrada e máquina modesta", "unknown-gpu": "GPU não identificada",
+    modest: "máquina modesta",
+  };
+  function detectedLabel() {
+    const d = S.detected;
+    if (!(d.reason in REASONS)) return d.label || "";
+    return [d.gpu || tr("GPU não identificada"), tr("{n} núcleos", { n: d.cores }), `${d.ramGB} GB`, tr(REASONS[d.reason])].join(" · ");
+  }
   const modeName = () => (S.prefs.renderMode in MODES ? S.prefs.renderMode : S.detected.mode in MODES ? S.detected.mode : "balanced");
   const M = () => MODES[modeName()];
   function applyMode() {
@@ -459,6 +598,7 @@
     setGoal({ s: ns, x: cx - (cx - g.x) * k, y: cy - (cy - g.y) * k }, { tau: smooth ? M().tauZoom : M().tauZoom * 1.5, ax: cx, ay: cy });
   }
   function zoomBy(d) {
+    if (S.kind === "txt") return;
     if (S.kind === "md") {
       const i = MD_ZOOM.findIndex((z) => z >= S.mdZoom - 1e-3);
       S.mdZoom = d === 0 ? 1 : MD_ZOOM[clamp((i < 0 ? 4 : i) + (d > 0 ? 1 : -1), 0, MD_ZOOM.length - 1)];
@@ -595,10 +735,10 @@
     const el = S.els.get(n.id), v = S.view;
     if (E.nodeBar.dataset.for !== String(n.id) || E.nodeBar.hidden) {
       E.nodeBar.innerHTML =
-        `<button class="icon-btn" data-op="addChild" title="Adicionar filho (Tab)">${icon("child")}Filho</button>` +
-        (n.parent ? `<button class="icon-btn" data-op="addSibling" title="Adicionar irmão (Enter)">${icon("sibling")}Irmão</button>` : "") +
-        `<button class="icon-btn" data-op="rename" title="Renomear (F2 ou duplo clique)">${icon("pencil")}</button>` +
-        (n.parent ? `<button class="icon-btn danger" data-op="remove" title="Excluir com os filhos (Delete)">${icon("trash")}</button>` : "");
+        `<button class="icon-btn" data-op="addChild" title="${tr("Adicionar filho (Tab)")}">${icon("child")}${tr("Filho")}</button>` +
+        (n.parent ? `<button class="icon-btn" data-op="addSibling" title="${tr("Adicionar irmão (Enter)")}">${icon("sibling")}${tr("Irmão")}</button>` : "") +
+        `<button class="icon-btn" data-op="rename" title="${tr("Renomear (F2 ou duplo clique)")}">${icon("pencil")}</button>` +
+        (n.parent ? `<button class="icon-btn danger" data-op="remove" title="${tr("Excluir com os filhos (Delete)")}">${icon("trash")}</button>` : "");
       E.nodeBar.dataset.for = n.id;
     }
     E.nodeBar.hidden = false;
@@ -717,24 +857,23 @@
   function pushHistory(t) { S.history.push(t); if (S.history.length > 300) S.history.shift(); S.future.length = 0; }
   function undo() {
     if (S.editing) cancelRename();
-    if (!S.history.length) return toast("Nada para desfazer");
+    if (!S.history.length) return toast(tr("Nada para desfazer"));
     S.future.push(S.text); S.text = S.history.pop(); S.typing = false;
     syncEditor(); setDirty(S.text !== S.saved); notifySource(); draw();
   }
   function redo() {
-    if (!S.future.length) return toast("Nada para refazer");
+    if (!S.future.length) return toast(tr("Nada para refazer"));
     S.history.push(S.text); S.text = S.future.pop(); S.typing = false;
     syncEditor(); setDirty(S.text !== S.saved); notifySource(); draw();
   }
 
   /* ---------------- editor de código ---------------- */
-  const LH = 20, PADT = 12; // igual ao line-height do CSS (px inteiros)
+  const LH = 20, PADT = 12, GUTTER = 46; // iguais ao CSS (px inteiros)
   function syncEditor() {
     if (E.src.value !== S.text) {
-      const { selectionStart: a, selectionEnd: b, scrollTop } = E.src;
+      const { selectionStart: a, selectionEnd: b } = E.src;
       E.src.value = S.text;
       E.src.setSelectionRange(Math.min(a, S.text.length), Math.min(b, S.text.length));
-      E.src.scrollTop = scrollTop;
     }
     updateGutter(); updateHl();
   }
@@ -744,10 +883,22 @@
     if (n !== gutterN) {
       gutterN = n;
       let s = ""; for (let i = 1; i <= n; i++) s += i + "\n";
-      E.gutter.textContent = s + "\n\n\n";
+      E.gutter.textContent = s;
     }
-    E.gutter.scrollTop = E.src.scrollTop;
+    sizeEditor();
   }
+  /* o <textarea> do tamanho do texto: quem rola é a .ed-body (ver o CSS) */
+  function sizeEditor() {
+    const avail = Math.max(0, E.scroll.clientWidth - GUTTER);
+    // uma linha a mais de folga: o Enter na última linha não chega a rolar o textarea por dentro
+    E.src.style.height = (gutterN + 1) * LH + 2 * PADT + "px";
+    E.src.style.width = avail + "px";
+    const w = E.src.scrollWidth;
+    if (w > avail) E.src.style.width = w + 4 * LH + "px";     // folga para digitar no fim da linha
+    if (E.src.scrollTop || E.src.scrollLeft) { E.src.scrollTop = 0; E.src.scrollLeft = 0; }
+  }
+  let sizeRaf = 0;
+  new ResizeObserver(() => { cancelAnimationFrame(sizeRaf); sizeRaf = requestAnimationFrame(sizeEditor); }).observe(E.scroll);
   function caretLine() {
     const v = E.src.value, p = E.src.selectionStart;
     const line = v.slice(0, p).split("\n").length - 1;
@@ -755,20 +906,40 @@
   }
   function updateHl() {
     const { line, col } = caretLine();
-    E.hl.style.top = PADT + line * LH - E.src.scrollTop + "px";
+    E.hl.style.top = PADT + line * LH + "px";
     E.pos.textContent = `Ln ${line + 1}, Col ${col + 1}`;
   }
   function lineStart(text, line) { let p = 0; for (let i = 0; i < line; i++) { p = text.indexOf("\n", p) + 1; if (!p) return text.length; } return p; }
+  function scrollToLine(line) {
+    const top = PADT + line * LH, h = E.scroll.clientHeight, st = E.scroll.scrollTop;
+    if (top < st + LH || top > st + h - 3 * LH) E.scroll.scrollTop = Math.max(0, top - h / 3);
+  }
+  /* mantém o cursor à vista ao digitar ou andar com as setas (o textarea não rola mais sozinho) */
+  let charW = 0;
+  function monoW() {                     // largura de um caractere da fonte do editor (monoespaçada)
+    if (!charW) { const c = document.createElement("canvas").getContext("2d"); c.font = getComputedStyle(E.src).font; charW = c.measureText("0").width || 7.5; }
+    return charW;
+  }
+  function revealCaret() {
+    const v = E.src.value, p = E.src.selectionDirection === "backward" ? E.src.selectionStart : E.src.selectionEnd;
+    const ls = v.lastIndexOf("\n", p - 1) + 1, line = v.slice(0, p).split("\n").length - 1;
+    const top = PADT + line * LH, h = E.scroll.clientHeight, st = E.scroll.scrollTop;
+    if (top < st) E.scroll.scrollTop = top - PADT;
+    else if (top + LH > st + h) E.scroll.scrollTop = top + LH + PADT - h;
+    const x = 14 + (p - ls) * monoW(), w = E.scroll.clientWidth - GUTTER, sl = E.scroll.scrollLeft;
+    if (x < sl + 8) E.scroll.scrollLeft = Math.max(0, x - w / 3);
+    else if (x > sl + w - 16) E.scroll.scrollLeft = x - w + w / 3;
+  }
+  document.addEventListener("selectionchange", () => { if (document.activeElement === E.src) { updateHl(); revealCaret(); } });
   function revealLine(line) {
     const p = lineStart(E.src.value, line);
     E.src.setSelectionRange(p, p);
-    const top = line * LH, h = E.src.clientHeight;
-    if (top < E.src.scrollTop + LH || top > E.src.scrollTop + h - 3 * LH) E.src.scrollTop = Math.max(0, top - h / 3);
+    scrollToLine(line);
     updateGutter(); updateHl();
   }
   function onEditorChange() {
     if (EDITOR_ONLY) {
-      S.text = E.src.value; updateGutter(); updateHl();
+      S.text = E.src.value; updateGutter(); updateHl(); revealCaret();
       post({ type: "edit", text: S.text });
       return;
     }
@@ -778,11 +949,12 @@
     clearTimeout(S.typeT); S.typeT = setTimeout(() => (S.typing = false), 900);
     S.text = E.src.value;
     setDirty(S.text !== S.saved);
-    updateGutter(); updateHl();
+    updateGutter(); updateHl(); revealCaret();
     scheduleLiveDraw();
   }
   E.src.addEventListener("input", onEditorChange);
-  E.src.addEventListener("scroll", () => { E.gutter.scrollTop = E.src.scrollTop; updateHl(); });
+  // o textarea não deve rolar por dentro (quem rola é a .ed-body); se o navegador rolar, desfaz
+  E.src.addEventListener("scroll", () => { if (E.src.scrollTop || E.src.scrollLeft) { E.src.scrollTop = 0; E.src.scrollLeft = 0; } });
   let lastCaretLine = -1;
   const caretSync = () => {
     updateHl();
@@ -808,6 +980,22 @@
       document.execCommand("insertText", false, "\n" + ws);
       return;
     }
+    if ((e.key === "PageDown" || e.key === "PageUp") && !mod && !e.altKey) {
+      // o textarea tem a altura do texto, então "uma página" é a altura visível da .ed-body
+      e.preventDefault();
+      const v = E.src.value, dir = e.key === "PageDown" ? 1 : -1;
+      const back = E.src.selectionDirection === "backward";
+      const focus = back ? E.src.selectionStart : E.src.selectionEnd, anchor = back ? E.src.selectionEnd : E.src.selectionStart;
+      const ls = v.lastIndexOf("\n", focus - 1) + 1, line = v.slice(0, focus).split("\n").length - 1;
+      const page = Math.max(1, Math.floor(E.scroll.clientHeight / LH) - 2);
+      const to = clamp(line + dir * page, 0, gutterN - 1), ts = lineStart(v, to), te = v.indexOf("\n", ts);
+      const p = Math.min(ts + (focus - ls), te < 0 ? v.length : te);
+      if (e.shiftKey) E.src.setSelectionRange(Math.min(anchor, p), Math.max(anchor, p), p < anchor ? "backward" : "forward");
+      else E.src.setSelectionRange(p, p);
+      E.scroll.scrollTop += (to - line) * LH;
+      caretSync();
+      return;
+    }
     if (e.key === "Tab") {
       e.preventDefault();
       const v = E.src.value, a = E.src.selectionStart, b = E.src.selectionEnd;
@@ -829,7 +1017,7 @@
     document.documentElement.style.setProperty("--ed-offset", (S.editorOpen && S.kind ? w + 20 : 0) + "px");
   }
   function toggleEditor(force) {
-    if (!S.kind) return;
+    if (!S.kind || S.kind === "txt") return;
     const open = typeof force === "boolean" ? force : !S.editorOpen;
     if (open === S.editorOpen) return;
     S.editorOpen = open;
@@ -899,12 +1087,12 @@
   });
 
   /* ---------------- dock ---------------- */
-  const btn = (cmd, ic, title, on, extra = "") => `<button class="icon-btn${on ? " on" : ""}" data-cmd="${cmd}" title="${title}">${icon(ic)}${extra}</button>`;
+  const btn = (cmd, ic, title, on, extra = "") => `<button class="icon-btn${on ? " on" : ""}" data-cmd="${cmd}" title="${tr(title)}">${icon(ic)}${extra}</button>`;
   const seg = (key, items, cur) => `<div class="segmented" role="radiogroup">` + items.map(([val, ic, title]) =>
-    `<button class="${val === cur ? "on" : ""}" data-seg="${key}" data-val="${val}" title="${title}" role="radio" aria-checked="${val === cur}">${icon(ic)}</button>`).join("") + `</div>`;
+    `<button class="${val === cur ? "on" : ""}" data-seg="${key}" data-val="${val}" title="${tr(title)}" role="radio" aria-checked="${val === cur}">${icon(ic)}</button>`).join("") + `</div>`;
   const SEP = '<span class="dock-sep"></span>';
   function buildDock() {
-    if (!S.kind) { E.dock.innerHTML = ""; return; }
+    if (!S.kind || S.kind === "txt") { E.dock.innerHTML = ""; return; }
     let h = btn("toggleEditor", "code", S.detached ? "Ir para a janela de código" : "Editor de código (Ctrl+E)", S.editorOpen || S.detached);
     if (S.kind === "mmd" && S.sub === "mindmap") {
       h += SEP + seg("layout", [
@@ -922,7 +1110,7 @@
       h += btn("spacing", "sliders", "Aparência", S.popover === "spacing");
     }
     h += SEP + btn("zoomOut", "minus", "Diminuir (Ctrl −)") +
-      `<button class="icon-btn zoom-label" data-cmd="zoomReset" title="Tamanho original (Ctrl 0)"></button>` +
+      `<button class="icon-btn zoom-label" data-cmd="zoomReset" title="${tr("Tamanho original (Ctrl 0)")}"></button>` +
       btn("zoomIn", "plus", "Aumentar (Ctrl +)");
     if (S.kind === "mmd") h += btn("fit", "fit", "Ajustar à janela");
     h += SEP;
@@ -965,7 +1153,7 @@
     spacing: () => (S.popover ? closePopover() : openPopover("spacing")),
     zoomIn: () => zoomBy(1), zoomOut: () => zoomBy(-1), zoomReset: () => zoomBy(0),
     fit: () => fit(true), undo: () => undo(), redo: () => redo(),
-    theme: () => { setTheme(S.theme === "dark" ? "light" : "dark"); post({ type: "theme", value: S.theme }); },
+    theme: () => { const t = (S.themeNext || S.theme) === "dark" ? "light" : "dark"; setTheme(t); post({ type: "theme", value: t }); },
   };
 
   /* ---------------- popover de espaçamento ---------------- */
@@ -980,26 +1168,84 @@
       ["rankSpacing", "Distância entre níveis", 10, 240],
     ],
   };
+  /* ---------------- animações "líquidas" ----------------
+   * Popover: cresce a partir do botão e assenta com o balanço leve de uma mola amortecida (largura e
+   * altura em molas um pouco diferentes). Tema: o novo tema se espalha
+   * a partir do botão como uma mancha de borda ondulada (View Transitions + clip-path animado). */
+  const calm = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  function spring(t, w, z) { // 0 → 1, com oscilação (z < 1)
+    if (t <= 0) return 0;
+    const wd = w * Math.sqrt(1 - z * z);
+    return 1 - Math.exp(-z * w * t) * (Math.cos(wd * t) + (z * w / wd) * Math.sin(wd * t));
+  }
+  let popAnim = [], popGeo = null;
+  function stopPopAnim() { popAnim.forEach((a) => a.cancel()); popAnim = []; E.pop.style.pointerEvents = ""; }
+  function popoverIn(anchor) {
+    stopPopAnim();
+    if (calm() || !E.pop.animate) return;
+    const pr = E.pop.getBoundingClientRect();
+    // começa um pouco menor que o cartão (não do tamanho do botão) e assenta com um balanço leve (~4%)
+    const sx0 = 0.72, sy0 = 0.6;
+    const ox = anchor.left + anchor.width / 2 - pr.left, oy = anchor.top + anchor.height / 2 - pr.top;
+    popGeo = { sx0, sy0, ox, oy };
+    const D = 420, N = 28, frames = [];
+    for (let i = 0; i <= N; i++) {
+      const t = (i / N) * D / 1000;
+      const ky = i === N ? 1 : spring(t, 26, 0.72);          // a altura vem um pouco antes
+      const kx = i === N ? 1 : spring(t - 0.02, 22, 0.75);   // da largura
+      frames.push({
+        transform: `scale(${(sx0 + (1 - sx0) * kx).toFixed(4)}, ${(sy0 + (1 - sy0) * ky).toFixed(4)})`,
+        opacity: Math.min(1, i / (N * 0.3)),
+      });
+    }
+    E.pop.style.transformOrigin = `${ox}px ${oy}px`;
+    popAnim.push(E.pop.animate(frames, { duration: D, easing: "linear" }));
+    [...E.pop.children].forEach((el, i) => popAnim.push(el.animate([
+      { opacity: 0, transform: "translateY(5px)" },
+      { opacity: 1, transform: "none" },
+    ], { duration: 260, delay: 50 + i * 12, easing: "cubic-bezier(.2, .8, .2, 1)", fill: "backwards" })));
+  }
+  function popoverOut(done) {
+    stopPopAnim();
+    if (calm() || !E.pop.animate || !popGeo) return done();
+    const { ox, oy } = popGeo;
+    E.pop.style.transformOrigin = `${ox}px ${oy}px`;
+    E.pop.style.pointerEvents = "none";
+    const a = E.pop.animate([
+      { transform: "none", opacity: 1 },
+      { transform: "scale(.9, .84)", opacity: 0 },
+    ], { duration: 150, easing: "cubic-bezier(.4, 0, 1, 1)", fill: "forwards" });
+    popAnim.push(a);
+    // o evento de fim depende de quadros: com a janela parada ele atrasa, então há um limite de tempo
+    let ended = false;
+    const end = () => { if (ended || !popAnim.includes(a)) return; ended = true; stopPopAnim(); done(); };
+    a.onfinish = end;
+    setTimeout(end, 220);
+  }
+
   function openPopover() {
+    const opening = !S.popover;
     S.popover = "spacing";
     const list = S.kind === "mmd" ? SLIDERS[S.sub] || [] : [];
-    let h = `<h3>${list.length ? "Espaçamento" : "Aparência"}</h3>`;
+    let h = `<h3>${tr(list.length ? "Espaçamento" : "Aparência")}</h3>`;
     for (const [k, label, min, max] of list) {
       const v = S.prefs[k], pct = ((v - min) / (max - min)) * 100;
-      h += `<div class="pref-row"><label>${label}<span data-out="${k}">${v}px</span></label>` +
+      h += `<div class="pref-row"><label>${tr(label)}<span data-out="${k}">${v}px</span></label>` +
         `<input type="range" min="${min}" max="${max}" value="${v}" data-pref="${k}" style="--pct:${pct}%"></div>`;
     }
-    const sw = (k, label) => `<div class="toggle-row">${label}<span class="switch"><input type="checkbox" data-pref="${k}"${S.prefs[k] ? " checked" : ""}><i></i></span></div>`;
+    const sw = (k, label) => `<div class="toggle-row">${tr(label)}<span class="switch"><input type="checkbox" data-pref="${k}"${S.prefs[k] ? " checked" : ""}><i></i></span></div>`;
     const cur = S.prefs.renderMode in MODES ? S.prefs.renderMode : "auto";
-    h += `<h3 class="sub">Renderização</h3><div class="seg-text" role="radiogroup">` +
+    h += `<h3 class="sub">${tr("Renderização")}</h3><div class="seg-text" role="radiogroup">` +
       [["auto", "Auto"], ["performance", "Desempenho"], ["balanced", "Equilibrado"], ["quality", "Qualidade"]].map(([v, l]) =>
-        `<button data-mode="${v}" class="${v === cur ? "on" : ""}" role="radio" aria-checked="${v === cur}">${l}</button>`).join("") + `</div>`;
+        `<button data-mode="${v}" class="${v === cur ? "on" : ""}" role="radio" aria-checked="${v === cur}">${tr(l)}</button>`).join("") + `</div>`;
+    const hw = detectedLabel();
     h += `<p class="mode-note">${cur === "auto"
-      ? `Usando <b>${MODE_NAMES[modeName()]}</b>${S.detected.label ? ` — ${escapeHtml(S.detected.label)}` : ""}`
-      : `Recomendado para este computador: <b>${MODE_NAMES[S.detected.mode] || "Equilibrado"}</b>`}</p>`;
+      ? tr("Usando <b>{mode}</b>", { mode: tr(MODE_NAMES[modeName()]) }) + (hw ? ` — ${escapeHtml(hw)}` : "")
+      : tr("Recomendado para este computador: <b>{mode}</b>", { mode: tr(MODE_NAMES[S.detected.mode] || "Equilibrado") })}</p>`;
     h += sw("glass", "Efeito vidro");
     h += sw("autoHideDock", "Ocultar esta barra automaticamente");
-    if (list.length) h += `<div class="pop-actions"><button class="text-btn" data-reset>Restaurar padrão</button></div>`;
+    if (list.length) h += `<div class="pop-actions"><button class="text-btn" data-reset>${tr("Restaurar padrão")}</button></div>`;
     E.pop.innerHTML = h;
     E.pop.hidden = false;
     const b = E.dock.querySelector('[data-cmd="spacing"]');
@@ -1008,10 +1254,12 @@
     const pw = E.pop.offsetWidth, ph = E.pop.offsetHeight;
     E.pop.style.left = Math.round(clamp(r.left + r.width / 2 - pw / 2, 8, innerWidth - pw - 8)) + "px";
     E.pop.style.top = Math.round(Math.max(8, r.top - ph - 12)) + "px";
+    if (opening) popoverIn(r);
   }
   function closePopover() {
     if (!S.popover) return;
-    S.popover = null; E.pop.hidden = true; buildDock();
+    S.popover = null; buildDock();
+    popoverOut(() => { if (!S.popover) E.pop.hidden = true; });
     if (S.prefs.autoHideDock) hideDockSoon();
   }
   let sliderT = 0;
@@ -1141,7 +1389,7 @@
   /* ---------------- boas-vindas / recentes ---------------- */
   function renderRecent(items) {
     $("recent-list").innerHTML = items.map((r, i) => {
-      const k = r.kind === "mmd" ? "mmd" : "md";
+      const k = r.kind === "mmd" || r.kind === "dot" ? "mmd" : "md";
       return `<li style="--i:${i}"><button class="recent-item" data-path="${escapeHtml(r.path)}" title="${escapeHtml(r.path)}">` +
         `<span class="ri-icon ${k}">${icon(k === "mmd" ? "both" : "doc")}</span>` +
         `<span class="ri-text"><b>${escapeHtml(r.name)}</b><small>${escapeHtml(r.folder || "")}</small></span></button></li>`;
@@ -1170,17 +1418,33 @@
   FB.bar.querySelector('[data-find="close"]').innerHTML = icon("close");
   function findCount(q) {
     const root = S.kind === "md" ? E.doc : E.canvas;
-    const text = (root.textContent || "").toLowerCase(), needle = q.toLowerCase();
+    const text = (S.kind === "txt" ? S.text : root.textContent || "").toLowerCase(), needle = q.toLowerCase();
     let n = 0;
     for (let i = text.indexOf(needle); needle && i >= 0; i = text.indexOf(needle, i + needle.length)) n++;
     return n;
   }
-  function findStep(back) {
+  const resultCount = (n) => (n === 0 ? tr("Nenhum resultado") : n === 1 ? tr("1 resultado") : tr("{n} resultados", { n }));
+  /* no .txt o texto está no editor, onde window.find não procura: a busca seleciona no próprio editor */
+  function findInEditor(q, back, again) {
+    const v = E.src.value.toLowerCase(), needle = q.toLowerCase();
+    const from = again ? E.src.selectionEnd : E.src.selectionStart;  // digitando, o trecho atual continua valendo
+    let i = back ? (E.src.selectionStart > 0 ? v.lastIndexOf(needle, E.src.selectionStart - 1) : -1) : v.indexOf(needle, from);
+    if (i < 0) i = back ? v.lastIndexOf(needle) : v.indexOf(needle);   // dá a volta
+    if (i < 0) return;
+    E.src.setSelectionRange(i, i + needle.length);
+    const ls = v.lastIndexOf("\n", i - 1) + 1, line = v.slice(0, i).split("\n").length - 1;
+    scrollToLine(line);
+    const x = 14 + (i - ls) * monoW(), w = E.scroll.clientWidth - GUTTER, sl = E.scroll.scrollLeft;
+    if (x < sl + 20 || x + needle.length * monoW() > sl + w - 20) E.scroll.scrollLeft = Math.max(0, x - w / 3);
+    updateGutter(); updateHl();
+  }
+  function findStep(back, again = true) {
     const q = FB.input.value;
     if (!q) { FB.count.textContent = ""; getSelection().removeAllRanges(); return; }
     const n = findCount(q);
-    FB.count.textContent = n ? `${n} resultado${n === 1 ? "" : "s"}` : "Nenhum resultado";
-    if (n && window.find(q, false, !!back, true, false, false, false)) {
+    FB.count.textContent = resultCount(n);
+    if (S.kind === "txt") { if (n) findInEditor(q, back, again); }
+    else if (n && window.find(q, false, !!back, true, false, false, false)) {
       const at = getSelection().anchorNode;
       const card = at && (at.nodeType === 1 ? at : at.parentElement).closest(".mm-node");
       if (card && S.parsed) { const node = S.parsed.nodes[+card.dataset.id]; if (node) ensureVisible(node.line); }
@@ -1193,11 +1457,11 @@
     const sel = String(getSelection() || "").trim();
     if (sel && sel.length < 80 && !sel.includes("\n")) FB.input.value = sel;
     FB.input.focus(); FB.input.select();
-    if (FB.input.value) FB.count.textContent = `${findCount(FB.input.value)} resultado(s)`;
+    if (FB.input.value) FB.count.textContent = resultCount(findCount(FB.input.value));
   }
   function closeFind() { FB.bar.hidden = true; FB.count.textContent = ""; getSelection().removeAllRanges(); }
   let findT = 0;
-  FB.input.addEventListener("input", () => { clearTimeout(findT); findT = setTimeout(() => findStep(false), 120); });
+  FB.input.addEventListener("input", () => { clearTimeout(findT); findT = setTimeout(() => findStep(false, false), 120); });
   FB.input.addEventListener("keydown", (e) => {
     if (e.key === "Enter") { e.preventDefault(); findStep(e.shiftKey); }
     else if (e.key === "Escape") { e.preventDefault(); closeFind(); }
@@ -1224,9 +1488,9 @@
   const keys = (k) => k.split(" ").map((t) => (KEY.test(t) ? `<kbd>${escapeHtml(t)}</kbd>` : escapeHtml(t))).join(" ");
   function showShortcuts() {
     const box = $("shortcuts");
-    box.innerHTML = `<header><h2>Atalhos de teclado</h2><button class="icon-btn small" data-close title="Fechar (Esc)">${icon("close")}</button></header>` +
-      `<div class="sc-cols">${SHORTCUTS.map(([title, rows]) => `<section><h3>${title}</h3><dl>${rows.map(([k, d]) =>
-        `<dt>${keys(k)}</dt><dd>${escapeHtml(d)}</dd>`).join("")}</dl></section>`).join("")}</div>`;
+    box.innerHTML = `<header><h2>${tr("Atalhos de teclado")}</h2><button class="icon-btn small" data-close title="${tr("Fechar (Esc)")}">${icon("close")}</button></header>` +
+      `<div class="sc-cols">${SHORTCUTS.map(([title, rows]) => `<section><h3>${tr(title)}</h3><dl>${rows.map(([k, d]) =>
+        `<dt>${keys(tr(k))}</dt><dd>${escapeHtml(tr(d))}</dd>`).join("")}</dl></section>`).join("")}</div>`;
     box.hidden = false; $("scrim").hidden = false;
   }
   function closeShortcuts() { $("shortcuts").hidden = true; $("scrim").hidden = true; }
@@ -1258,25 +1522,104 @@
     }
     if (S.editing) { S.editing.label.onblur = null; S.editing = null; }
     S.path = p.path || null;
-    S.kind = p.kind;
+    // .gv/.dot usa o mesmo palco dos diagramas Mermaid ("mmd"); S.lang diz quem desenha
+    S.kind = p.kind === "dot" ? "mmd" : p.kind;
+    S.lang = p.kind === "dot" ? "dot" : null;
     if (p.prefs) S.prefs = { ...DEFAULTS, ...p.prefs };
     if (fresh) { S.history = []; S.future = []; S.selected = null; S.mdZoom = 1; S.hasFit = false; }
     else if (p.text !== S.text) pushHistory(S.text);
     S.text = p.text; S.saved = p.text; S.typing = false;
     setDirty(false);
     setBase(p.base);
-    setMode(p.kind);
+    setMode(S.kind);
+    const edTitle = document.querySelector(".ed-title");
+    edTitle.dataset.i18n = S.kind === "txt" ? "Texto" : "Código";
+    edTitle.textContent = tr(edTitle.dataset.i18n);
     applyGlass(); applyAutoHide(); applyMode(); setEditorOffset();
     syncEditor();
     notifySource();
     closePopover();
     try { await draw({ fit: fresh }); }
     finally { if (load === loadSeq) body.classList.remove("is-loading"); }
+    if (fresh && S.kind === "txt") { E.src.setSelectionRange(0, 0); E.scroll.scrollTop = 0; E.scroll.scrollLeft = 0; E.src.focus({ preventScroll: true }); updateHl(); }
   }
-  function setTheme(t) { applyTheme(t); if (!EDITOR_ONLY) draw(); }
+  function setTheme(t) {
+    const next = t === "light" ? "light" : "dark";
+    const from = S.themeNext || S.theme;
+    S.themeNext = next; // a troca animada só aplica o tema depois da foto da tela: vale sempre o último pedido
+    if (next === from || calm() || body.classList.contains("mode-boot") || document.hidden) {
+      applyTheme(next); if (!EDITOR_ONLY) draw();
+      return;
+    }
+    // o novo tema só é fotografado depois das folhas de estilo e do desenho prontos (com limite)
+    const update = async () => {
+      const css = Promise.all(["gh-css", "hl-css"].map((id) => new Promise((r) => $(id).addEventListener("load", r, { once: true }))));
+      applyTheme(S.themeNext || next);
+      await Promise.race([Promise.all([css, EDITOR_ONLY ? null : draw()]), sleep(700)]);
+    };
+    if (document.startViewTransition) liquidTheme(update); else fadeTheme(update);
+  }
+  let themeVT = null, fadeT = 0;
+  function liquidTheme(update) {
+    if (themeVT) themeVT.skipTransition();
+    const b = E.dock.querySelector('[data-cmd="theme"]'), br = b && b.getBoundingClientRect();
+    const [cx, cy] = br && br.width ? [br.left + br.width / 2, br.top + br.height / 2] : [innerWidth / 2, innerHeight / 2];
+    const st = document.createElement("style");
+    st.textContent = liquidCss(cx, cy, innerWidth, innerHeight);
+    document.head.appendChild(st);
+    let vt;
+    try { vt = document.startViewTransition(update); }
+    catch (_) { st.remove(); update(); return; }
+    themeVT = vt;
+    vt.finished.finally(() => { st.remove(); if (themeVT === vt) { themeVT = null; S.themeNext = null; } });
+  }
+  /* mancha que cresce do botão: polígono com o raio ondulado por três senos que giram em sentidos
+   * diferentes; a ondulação diminui até virar um círculo maior que a janela */
+  function liquidCss(cx, cy, W, H) {
+    const R = Math.hypot(Math.max(cx, W - cx), Math.max(cy, H - cy)) + 60;
+    const N = 64, F = 32;
+    let kf = "";
+    for (let f = 0; f <= F; f++) {
+      const t = f / F;
+      const g = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+      const a = f === F ? 0 : 0.22 * Math.pow(1 - t, 1.3);
+      const pts = [];
+      for (let i = 0; i < N; i++) {
+        const th = (i / N) * 2 * Math.PI;
+        const w = 0.55 * Math.sin(3 * th + 6 * t) + 0.3 * Math.sin(5 * th - 9 * t + 1.3) + 0.15 * Math.sin(8 * th + 14 * t + 2.1);
+        const r = R * g * (1 + a * w);
+        pts.push(`${(cx + r * Math.cos(th)).toFixed(1)}px ${(cy + r * Math.sin(th)).toFixed(1)}px`);
+      }
+      kf += `${(t * 100).toFixed(2)}%{clip-path:polygon(${pts.join(",")})}`;
+    }
+    return `@keyframes mirante-liquid{${kf}}` +
+      "::view-transition-old(root),::view-transition-new(root){animation:none;mix-blend-mode:normal}" +
+      "::view-transition-new(root){animation:mirante-liquid .55s linear both}";
+  }
+  /* sem View Transitions: as cores deslizam de um tema para o outro */
+  function fadeTheme(update) {
+    const root = document.documentElement;
+    root.classList.add("theme-fade");
+    update();
+    clearTimeout(fadeT); fadeT = setTimeout(() => root.classList.remove("theme-fade"), 560);
+  }
+
+  /* troca de idioma pelo menu, sem recarregar: textos fixos, barra, popover e o desenho (mensagens de erro) */
+  function setLang(l) {
+    const next = langOf(l);
+    if (next === LANG) return;
+    LANG = next;
+    applyStaticText();
+    buildDock();
+    if (S.popover) openPopover();
+    if (!$("shortcuts").hidden) showShortcuts();
+    if (!FB.bar.hidden && FB.input.value) FB.count.textContent = resultCount(findCount(FB.input.value));
+    if (S.kind === "mmd" && S.parsed) E.nodeBar.dataset.for = "";
+    if (S.kind && !EDITOR_ONLY) draw({ force: true });
+  }
 
   window.mirante = {
-    render, setTheme, showWelcome, toggleEditor, zoomBy, getSvg, toast, undo, redo, openFind, showShortcuts,
+    render, setTheme, setLang, showWelcome, toggleEditor, zoomBy, getSvg, toast, undo, redo, openFind, showShortcuts,
     /* a camada nativa pede um valor: executa fn e responde com {type:"reply"} */
     __ask: async (id, fn) => {
       let value = null;
@@ -1289,7 +1632,7 @@
     getSource: () => S.text,
     isDirty: () => S.dirty,
     markSaved: () => { S.saved = S.text; setDirty(false); },
-    setDetected: (d) => { S.detected = { mode: d.mode in MODES ? d.mode : "balanced", label: d.label || "" }; applyMode(); if (S.popover) openPopover(); },
+    setDetected: (d) => { S.detected = { ...d, mode: d.mode in MODES ? d.mode : "balanced", label: d.label || "" }; applyMode(); if (S.popover) openPopover(); },
     _mode: () => ({ mode: modeName(), ...M() }),
     setPref: (k, v) => { setPref(k, v); if (S.popover) openPopover(); },
     /* janela de código separada ↔ principal */

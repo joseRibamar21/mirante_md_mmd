@@ -81,7 +81,7 @@ jobs:
       - name: Associações de arquivo
         shell: pwsh
         run: |
-          foreach ($ext in '.md', '.markdown', '.mmd', '.mermaid') {
+          foreach ($ext in '.md', '.markdown', '.mmd', '.mermaid', '.gv') {
             $k = "HKCU:\Software\Classes\$ext"
             if (Test-Path $k) { Write-Host "$ext -> $((Get-ItemProperty $k).'(default)')" }
             else { Write-Host "::warning::$ext não ficou registrado" }

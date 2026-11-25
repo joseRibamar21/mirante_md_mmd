@@ -12,8 +12,8 @@ pub fn detect(webgl_renderer: &str) -> Value {
     let (mode, reason) = classify(renderer, cores, ram_gb);
     let gpu = gpu_name(renderer);
     json!({
+        // o texto mostrado ("GPU dedicada", "8 núcleos"...) é montado pela página, no idioma dela
         "mode": mode, "reason": reason, "gpu": gpu, "cores": cores, "ramGB": ram_gb,
-        "label": format!("{gpu} · {cores} núcleos · {ram_gb} GB · {reason}"),
     })
 }
 
@@ -21,7 +21,7 @@ fn classify(renderer: &str, cores: usize, ram_gb: u64) -> (&'static str, &'stati
     let r = renderer.to_lowercase();
     let has = |keys: &[&str]| keys.iter().any(|k| r.contains(k));
     if r.is_empty() || has(&["llvmpipe", "softpipe", "swrast", "software", "swiftshader", "basic render"]) {
-        return ("performance", "sem aceleração de GPU");
+        return ("performance", "no-gpu");
     }
     let integrated = has(&[
         "intel", "uhd", "iris", "radeon graphics", "radeon(tm) graphics", "vega 3", "vega 6", "vega 8",
@@ -33,19 +33,19 @@ fn classify(renderer: &str, cores: usize, ram_gb: u64) -> (&'static str, &'stati
         && has(&["geforce", "nvidia", "quadro", "rtx", "radeon rx", "radeon pro", "navi", "polaris", "radeon vii", "arc a", "arc b", "intel(r) arc"]);
     let ram_ok = ram_gb == 0 || ram_gb >= 8; // 0 = não deu para ler
     if discrete {
-        return if cores >= 6 && ram_ok { ("quality", "GPU dedicada") } else { ("balanced", "GPU dedicada, CPU/RAM modestas") };
+        return if cores >= 6 && ram_ok { ("quality", "dedicated") } else { ("balanced", "dedicated-modest") };
     }
     if integrated {
-        return if cores >= 4 && ram_ok { ("balanced", "GPU integrada") } else { ("performance", "GPU integrada e máquina modesta") };
+        return if cores >= 4 && ram_ok { ("balanced", "integrated") } else { ("performance", "integrated-modest") };
     }
-    if cores >= 4 { ("balanced", "GPU não identificada") } else { ("performance", "máquina modesta") }
+    if cores >= 4 { ("balanced", "unknown-gpu") } else { ("performance", "modest") }
 }
 
 /// "ANGLE (AMD, AMD Radeon RX 6700 XT Direct3D11 vs_5_0 ps_5_0, D3D11)" → "AMD Radeon RX 6700 XT";
-/// "AMD Radeon RX 6700 XT (radeonsi, navi22, ...)" → "AMD Radeon RX 6700 XT".
+/// "AMD Radeon RX 6700 XT (radeonsi, navi22, ...)" → "AMD Radeon RX 6700 XT". Vazio = não identificada.
 fn gpu_name(renderer: &str) -> String {
     if renderer.is_empty() {
-        return "GPU não identificada".into();
+        return String::new();
     }
     let mut name = renderer.to_string();
     if let Some(inner) = name.strip_prefix("ANGLE (").and_then(|s| s.strip_suffix(')')) {
@@ -159,7 +159,7 @@ mod tests {
     fn nomes_de_gpu() {
         assert_eq!(gpu_name("ANGLE (AMD, AMD Radeon RX 6700 XT Direct3D11 vs_5_0 ps_5_0, D3D11)"), "AMD Radeon RX 6700 XT");
         assert_eq!(gpu_name("AMD Radeon RX 6700 XT (radeonsi, navi22, LLVM 19.1.1, DRM 3.64)"), "AMD Radeon RX 6700 XT");
-        assert_eq!(gpu_name(""), "GPU não identificada");
+        assert_eq!(gpu_name(""), "");
     }
 
     #[test]

@@ -1,7 +1,7 @@
 {
   "name": "mirante",
   "private": true,
-  "description": "Visualizador e editor de Markdown e diagramas Mermaid",
+  "description": "Visualizador e editor de Markdown e diagramas Mermaid e Graphviz",
   "license": "MIT",
   "scripts": {
     "tauri": "tauri",

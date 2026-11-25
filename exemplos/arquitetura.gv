@@ -1,0 +1,23 @@
+// Grafo Graphviz (DOT). Troque "dot" por neato, circo ou twopi em `layout` para ver outros arranjos.
+digraph Arquitetura {
+  layout=dot
+  rankdir=LR
+  node [shape=box, style=rounded]
+
+  usuario [label="Usuário", shape=ellipse]
+
+  subgraph cluster_app {
+    label="Mirante"
+    pagina [label="Página web\n(viewer.js)"]
+    nativo [label="Camada nativa\n(Rust + Tauri)"]
+    pagina -> nativo [label="page_message"]
+    nativo -> pagina [label="mirante.render"]
+  }
+
+  disco [label="Arquivos\n.md · .mmd · .gv", shape=folder]
+  config [label="settings.json", shape=note]
+
+  usuario -> pagina [label="lê e edita"]
+  nativo -> disco [label="abre, salva\ne acompanha"]
+  nativo -> config [style=dashed]
+}

@@ -1,14 +1,20 @@
 [Desktop Entry]
 Type=Application
 Name=Mirante
-GenericName=Visualizador de Markdown
-Comment=Visualize e edite arquivos Markdown (.md) e diagramas Mermaid (.mmd)
+GenericName=Markdown Viewer
+GenericName[pt]=Visualizador de Markdown
+GenericName[pt_BR]=Visualizador de Markdown
+Comment=View and edit Markdown files (.md), Mermaid (.mmd) and Graphviz (.gv) diagrams and plain text (.txt)
+Comment[pt]=Visualize e edite arquivos Markdown (.md), diagramas Mermaid (.mmd) e Graphviz (.gv) e texto simples (.txt)
+Comment[pt_BR]=Visualize e edite arquivos Markdown (.md), diagramas Mermaid (.mmd) e Graphviz (.gv) e texto simples (.txt)
 Exec=mirante %F
 Icon=mirante
 Terminal=false
 Categories=Utility;Viewer;TextTools;GTK;
-Keywords=markdown;md;mermaid;mmd;diagrama;mapa mental;mindmap;viewer;
-MimeType=text/markdown;text/x-markdown;text/vnd.mermaid;
+Keywords=markdown;md;mermaid;mmd;graphviz;dot;gv;diagram;mind map;mindmap;viewer;
+Keywords[pt]=markdown;md;mermaid;mmd;graphviz;dot;gv;diagrama;mapa mental;mindmap;visualizador;
+Keywords[pt_BR]=markdown;md;mermaid;mmd;graphviz;dot;gv;diagrama;mapa mental;mindmap;visualizador;
+MimeType=text/markdown;text/x-markdown;text/vnd.mermaid;text/vnd.graphviz;text/plain;
 StartupNotify=true
 StartupWMClass=mirante
 DBusActivatable=false

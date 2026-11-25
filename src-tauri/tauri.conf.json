@@ -33,8 +33,8 @@
       "icons/icon.png"
     ],
     "category": "Utility",
-    "shortDescription": "Visualizador e editor de Markdown e diagramas Mermaid",
-    "longDescription": "Abre arquivos .md e .mmd com visual limpo e atualiza sozinho quando o arquivo muda no disco. Mapas mentais editáveis com quatro layouts, editor de código ao lado com o desenho ao vivo, tema claro e escuro e exportação para SVG e PDF.",
+    "shortDescription": "Visualizador e editor de Markdown e diagramas Mermaid e Graphviz",
+    "longDescription": "Abre arquivos .md, .mmd e .gv com visual limpo e atualiza sozinho quando o arquivo muda no disco. Mapas mentais editáveis com quatro layouts, editor de código ao lado com o desenho ao vivo, tema claro e escuro e exportação para SVG e PDF.",
     "publisher": "José Ribamar",
     "copyright": "© 2026 José Ribamar",
     "homepage": "https://github.com/joseRibamar21/mirante_md_mmd",
@@ -63,6 +63,24 @@
         "description": "Diagrama Mermaid",
         "role": "Editor",
         "mimeType": "text/vnd.mermaid"
+      },
+      {
+        "ext": [
+          "gv"
+        ],
+        "name": "Graphviz",
+        "description": "Grafo Graphviz",
+        "role": "Editor",
+        "mimeType": "text/vnd.graphviz"
+      },
+      {
+        "ext": [
+          "txt"
+        ],
+        "name": "Texto",
+        "description": "Texto simples",
+        "role": "Editor",
+        "mimeType": "text/plain"
       }
     ],
     "linux": {
@@ -79,7 +97,8 @@
     "windows": {
       "nsis": {
         "languages": [
-          "PortugueseBR"
+          "PortugueseBR",
+          "English"
         ],
         "installMode": "currentUser"
       },

@@ -14,17 +14,19 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::Mutex;
+use std::sync::{Mutex, OnceLock};
 use std::time::Duration;
-use tauri::menu::{Menu, MenuBuilder, MenuItemBuilder, SubmenuBuilder};
+use tauri::menu::{CheckMenuItemBuilder, Menu, MenuBuilder, MenuItemBuilder, SubmenuBuilder};
 use tauri::window::Color;
 use tauri::{AppHandle, DragDropEvent, Manager, Theme, Url, WebviewUrl, WebviewWindow, WebviewWindowBuilder, WindowEvent, Wry};
 use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind, MessageDialogResult};
 use tauri_plugin_opener::OpenerExt;
 
 const APP_NAME: &str = "Mirante";
-const MD_EXT: &[&str] = &["md", "markdown", "mdown", "mkd", "mkdn", "mdx", "txt"];
+const MD_EXT: &[&str] = &["md", "markdown", "mdown", "mkd", "mkdn", "mdx"];
+const TXT_EXT: &[&str] = &["txt", "text"];
 const MMD_EXT: &[&str] = &["mmd", "mermaid"];
+const DOT_EXT: &[&str] = &["gv", "dot"];
 const EDITOR_SUFFIX: &str = "-editor";
 
 /// Um documento aberto: uma janela principal.
@@ -62,6 +64,79 @@ fn doc_path(app: &AppHandle, label: &str) -> Option<PathBuf> {
     with_doc(app, label, |d| d.path.clone()).flatten()
 }
 
+// ---------------------------------------------------------------- idioma
+
+#[derive(Clone, Copy, PartialEq, Debug)]
+enum Lang {
+    Pt,
+    En,
+}
+
+impl Lang {
+    fn code(self) -> &'static str {
+        match self {
+            Lang::Pt => "pt",
+            Lang::En => "en",
+        }
+    }
+}
+
+/// Português quando o sistema está em português; qualquer outro idioma fica com o inglês.
+fn lang_from_locale(locale: &str) -> Lang {
+    let first = locale.split(':').next().unwrap_or_default().trim().to_ascii_lowercase();
+    if first.starts_with("pt") { Lang::Pt } else { Lang::En }
+}
+
+fn system_lang() -> Lang {
+    static CACHE: OnceLock<Lang> = OnceLock::new();
+    *CACHE.get_or_init(|| {
+        #[cfg(windows)]
+        {
+            // idioma da interface do Windows (LANGID); o idioma primário 0x16 é o português
+            let id = unsafe { windows_sys::Win32::Globalization::GetUserDefaultUILanguage() };
+            if id & 0x3ff == 0x16 { Lang::Pt } else { Lang::En }
+        }
+        #[cfg(not(windows))]
+        {
+            // a mesma ordem do gettext; LANGUAGE pode ser uma lista ("pt_BR:pt:en")
+            let locale = ["LANGUAGE", "LC_ALL", "LC_MESSAGES", "LANG"]
+                .iter()
+                .filter_map(|v| std::env::var(v).ok())
+                .find(|s| !s.is_empty())
+                .unwrap_or_default();
+            lang_from_locale(&locale)
+        }
+    })
+}
+
+/// O idioma escolhido em Exibir → Idioma, ou o do sistema.
+fn lang(app: &AppHandle) -> Lang {
+    match state(app).settings.lock().unwrap().language() {
+        Some("pt") => Lang::Pt,
+        Some("en") => Lang::En,
+        _ => system_lang(),
+    }
+}
+
+/// O texto no idioma da interface: `tr(app, "Salvar", "Save")`.
+fn tr(app: &AppHandle, pt: &'static str, en: &'static str) -> &'static str {
+    if lang(app) == Lang::En { en } else { pt }
+}
+
+fn set_language(app: &AppHandle, choice: Option<&str>) {
+    state(app).settings.lock().unwrap().set_language(choice);
+    let code = lang(app).code();
+    for (label, w) in app.webview_windows() {
+        if !label.ends_with(EDITOR_SUFFIX) {
+            if let Ok(menu) = build_menu(app) {
+                let _ = w.set_menu(menu);
+            }
+            update_title(app, &label);
+        }
+        let _ = w.eval(format!("mirante.setLang({})", js_str(code)));
+    }
+}
+
 // ---------------------------------------------------------------- arquivos e caminhos
 
 fn ext_of(path: &Path) -> Option<String> {
@@ -71,12 +146,14 @@ fn ext_of(path: &Path) -> Option<String> {
 fn kind_for(path: &Path) -> &'static str {
     match ext_of(path) {
         Some(e) if MMD_EXT.contains(&e.as_str()) => "mmd",
+        Some(e) if DOT_EXT.contains(&e.as_str()) => "dot",
+        Some(e) if TXT_EXT.contains(&e.as_str()) => "txt",
         _ => "md",
     }
 }
 
 fn is_doc(path: &Path) -> bool {
-    ext_of(path).is_some_and(|e| MD_EXT.contains(&e.as_str()) || MMD_EXT.contains(&e.as_str()))
+    ext_of(path).is_some_and(|e| [MD_EXT, MMD_EXT, DOT_EXT, TXT_EXT].iter().any(|l| l.contains(&e.as_str())))
 }
 
 /// Caminho absoluto. No Windows sem `canonicalize`, que devolve o formato `\\?\C:\...`.
@@ -164,9 +241,57 @@ fn theme_of(dark: bool) -> Theme {
     if dark { Theme::Dark } else { Theme::Light }
 }
 
-/// Roda antes do HTML: a página já nasce no tema certo ("system" = seguir o sistema).
-fn init_script(theme: &str, editor_only: bool) -> String {
-    format!("window.MIRANTE_THEME = {};{}", js_str(theme), if editor_only { "window.MIRANTE_EDITOR_ONLY = true;" } else { "" })
+/// Nome do tema GTK para o modo pedido. Temas como "Yaru-blue-dark" ignoram o pedido de tema claro
+/// e deixam o menu com texto branco sobre a janela clara; nesse caso usamos a variante sem "-dark".
+fn gtk_variant(original: &str, dark: bool, exists: impl Fn(&str) -> bool) -> Option<String> {
+    let base = original.strip_suffix("-dark").or_else(|| original.strip_suffix("-Dark"))?;
+    let want = if dark { original } else { base };
+    exists(want).then(|| want.to_string())
+}
+
+/// Troca o tema GTK do processo (barra de menu, caixas de diálogo) junto com o tema do Mirante.
+fn apply_gtk_theme(app: &AppHandle, dark: bool) {
+    #[cfg(target_os = "linux")]
+    let _ = app.run_on_main_thread(move || {
+        use gtk::prelude::*;
+        static ORIGINAL: OnceLock<Option<String>> = OnceLock::new();
+        if std::env::var_os("GTK_THEME").is_some() {
+            return; // o usuário fixou o tema; GtkSettings não manda nele
+        }
+        let Some(settings) = gtk::Settings::default() else { return };
+        let original = ORIGINAL.get_or_init(|| settings.gtk_theme_name().map(|s| s.to_string()));
+        let Some(original) = original else { return };
+        if let Some(want) = gtk_variant(original, dark, gtk_theme_exists) {
+            if settings.gtk_theme_name().as_deref() != Some(want.as_str()) {
+                settings.set_gtk_theme_name(Some(&want));
+            }
+        }
+    });
+    #[cfg(not(target_os = "linux"))]
+    let _ = (app, dark);
+}
+
+#[cfg(target_os = "linux")]
+fn gtk_theme_exists(name: &str) -> bool {
+    let mut dirs: Vec<PathBuf> = Vec::new();
+    if let Some(home) = std::env::var_os("HOME").map(PathBuf::from) {
+        dirs.push(home.join(".themes"));
+        dirs.push(home.join(".local/share/themes"));
+    }
+    let data = std::env::var("XDG_DATA_DIRS").unwrap_or_else(|_| "/usr/local/share:/usr/share".into());
+    dirs.extend(data.split(':').filter(|d| !d.is_empty()).map(|d| Path::new(d).join("themes")));
+    dirs.push(PathBuf::from("/usr/share/themes"));
+    dirs.iter().any(|d| d.join(name).join("gtk-3.0").is_dir())
+}
+
+/// Roda antes do HTML: a página já nasce no tema ("system" = seguir o sistema) e no idioma certos.
+fn init_script(theme: &str, lang: Lang, editor_only: bool) -> String {
+    format!(
+        "window.MIRANTE_THEME = {};window.MIRANTE_LANG = {};{}",
+        js_str(theme),
+        js_str(lang.code()),
+        if editor_only { "window.MIRANTE_EDITOR_ONLY = true;" } else { "" }
+    )
 }
 
 fn saved_theme(app: &AppHandle) -> Option<bool> {
@@ -180,6 +305,9 @@ fn new_window(app: &AppHandle) -> tauri::Result<WebviewWindow> {
     let saved = saved_theme(app);
     let theme = match saved { Some(true) => "dark", Some(false) => "light", None => "system" };
     s.docs.lock().unwrap().insert(label.clone(), Doc::default());
+    if saved.is_some() {
+        apply_gtk_theme(app, dark);
+    }
 
     let nav = (app.clone(), label.clone());
     let win = WebviewWindowBuilder::new(app, &label, WebviewUrl::App("viewer.html".into()))
@@ -191,7 +319,7 @@ fn new_window(app: &AppHandle) -> tauri::Result<WebviewWindow> {
         .on_menu_event(|w, e| menu_action(w.app_handle(), w.label(), e.id().as_ref()))
         .theme(saved.map(theme_of))
         .background_color(bg(dark))
-        .initialization_script(init_script(theme, false))
+        .initialization_script(init_script(theme, lang(app), false))
         .on_navigation(move |url| navigate(&nav.0, &nav.1, url))
         .build()?;
     fit_and_show(&win, 1180.0, 820.0);
@@ -249,7 +377,7 @@ fn destroy(app: &AppHandle, label: &str) {
     }
 }
 
-/// Links clicados na página: arquivos .md/.mmd abrem aqui, o resto vai para o sistema.
+/// Links clicados na página: arquivos .md/.mmd/.gv abrem aqui, o resto vai para o sistema.
 fn navigate(app: &AppHandle, label: &str, url: &Url) -> bool {
     if url.scheme() == "tauri" || url.host_str() == Some("tauri.localhost") || url.scheme() == "about" {
         return true;
@@ -280,7 +408,7 @@ fn update_title(app: &AppHandle, label: &str) {
         let _ = w.set_title(&title);
     }
     if let (Some(ed), Some(p)) = (app.get_webview_window(&format!("{label}{EDITOR_SUFFIX}")), &path) {
-        let _ = ed.set_title(&format!("{mark}Código — {}", file_name(&p.to_string_lossy())));
+        let _ = ed.set_title(&format!("{mark}{} — {}", tr(app, "Código", "Code"), file_name(&p.to_string_lossy())));
     }
 }
 
@@ -288,6 +416,7 @@ fn set_dark(app: &AppHandle, dark: bool, except: Option<&str>) {
     *state(app).dark.lock().unwrap() = dark;
     state(app).settings.lock().unwrap().set_theme(dark);
     let t = if dark { "dark" } else { "light" };
+    apply_gtk_theme(app, dark);
     for (label, w) in app.webview_windows() {
         let _ = w.set_theme(Some(theme_of(dark)));
         let _ = w.set_background_color(Some(bg(dark)));
@@ -344,7 +473,7 @@ fn open_args(app: &AppHandle, args: &[String], cwd: &Path) {
 fn open_path(app: &AppHandle, label: &str, path: PathBuf) {
     let path = normalize(&path);
     if !path.is_file() {
-        error(app, label, &format!("Arquivo não encontrado:\n{}", path.display()));
+        error(app, label, &format!("{}\n{}", tr(app, "Arquivo não encontrado:", "File not found:"), path.display()));
         return;
     }
     let busy = with_doc(app, label, |d| d.dirty && d.path.as_deref() != Some(path.as_path())).unwrap_or(false);
@@ -376,7 +505,7 @@ fn load(app: &AppHandle, label: &str, keep_scroll: bool) {
     let text = match read_text(&path) {
         Ok(t) => t,
         Err(e) => {
-            error(app, label, &format!("Não foi possível ler o arquivo:\n{e}"));
+            error(app, label, &format!("{}\n{e}", tr(app, "Não foi possível ler o arquivo:", "Could not read the file:")));
             return;
         }
     };
@@ -427,18 +556,18 @@ fn save(app: &AppHandle, label: &str, then: Option<Then>) {
     let l = label.to_string();
     ask(app, label, "mirante.getSource()", move |app, v| {
         let Some(text) = v.as_str().map(str::to_string) else {
-            error(app, &l, "Não foi possível obter o conteúdo do editor.");
+            error(app, &l, tr(app, "Não foi possível obter o conteúdo do editor.", "Could not get the editor's contents."));
             return;
         };
         if let Err(e) = fs::write(&path, &text) {
-            error(app, &l, &format!("Não foi possível salvar:\n{e}"));
+            error(app, &l, &format!("{}\n{e}", tr(app, "Não foi possível salvar:", "Could not save:")));
             return;
         }
         with_doc(app, &l, |d| {
             d.last_text = Some(text);
             d.dirty = false;
         });
-        js(app, &l, "mirante.markSaved(); mirante.toast('Salvo')");
+        js(app, &l, &format!("mirante.markSaved(); mirante.toast({})", js_str(tr(app, "Salvo", "Saved"))));
         update_title(app, &l);
         if let Some(f) = then {
             f(app);
@@ -490,22 +619,25 @@ fn reload_if_changed(app: &AppHandle, label: &str) {
         return; // nossa própria gravação, ou nada mudou
     }
     if dirty {
-        toast(app, label, "O arquivo mudou no disco. F5 recarrega (descarta suas edições).", 6000);
+        let msg = tr(app, "O arquivo mudou no disco. F5 recarrega (descarta suas edições).", "The file changed on disk. F5 reloads it (discards your edits).");
+        toast(app, label, msg, 6000);
         return;
     }
     load(app, label, true);
 }
 
 fn open_dialog(app: &AppHandle, label: &str) {
-    let all: Vec<&str> = MD_EXT.iter().chain(MMD_EXT).copied().collect();
+    let all: Vec<&str> = MD_EXT.iter().chain(MMD_EXT).chain(DOT_EXT).chain(TXT_EXT).copied().collect();
     let mut d = app
         .dialog()
         .file()
-        .set_title("Abrir arquivo")
-        .add_filter("Markdown e Mermaid", &all)
+        .set_title(tr(app, "Abrir arquivo", "Open file"))
+        .add_filter(tr(app, "Markdown, diagramas e texto", "Markdown, diagrams and text"), &all)
         .add_filter("Markdown", MD_EXT)
         .add_filter("Mermaid", MMD_EXT)
-        .add_filter("Todos os arquivos", &["*"]);
+        .add_filter("Graphviz", DOT_EXT)
+        .add_filter(tr(app, "Texto", "Text"), TXT_EXT)
+        .add_filter(tr(app, "Todos os arquivos", "All files"), &["*"]);
     if let Some(dir) = doc_path(app, label).and_then(|p| p.parent().map(Path::to_path_buf)) {
         d = d.set_directory(dir);
     }
@@ -526,11 +658,11 @@ fn export_svg(app: &AppHandle, label: &str) {
     ask(app, label, "mirante.getSvg()", move |app, v| {
         let svg = v.as_str().unwrap_or_default().to_string();
         if svg.is_empty() {
-            error(app, &l, "Não há diagrama renderizado para exportar.");
+            error(app, &l, tr(app, "Não há diagrama renderizado para exportar.", "There is no rendered diagram to export."));
             return;
         }
-        let stem = path.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_else(|| "diagrama".into());
-        let mut d = app.dialog().file().set_title("Exportar SVG").add_filter("SVG", &["svg"]).set_file_name(format!("{stem}.svg"));
+        let stem = path.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_else(|| tr(app, "diagrama", "diagram").into());
+        let mut d = app.dialog().file().set_title(tr(app, "Exportar SVG", "Export SVG")).add_filter("SVG", &["svg"]).set_file_name(format!("{stem}.svg"));
         if let Some(dir) = path.parent() {
             d = d.set_directory(dir);
         }
@@ -541,7 +673,7 @@ fn export_svg(app: &AppHandle, label: &str) {
         d.save_file(move |f| {
             if let Some(out) = f.and_then(|f| f.into_path().ok()) {
                 if let Err(e) = fs::write(&out, svg) {
-                    error(&h, &l2, &format!("Não foi possível exportar:\n{e}"));
+                    error(&h, &l2, &format!("{}\n{e}", tr(&h, "Não foi possível exportar:", "Could not export:")));
                 }
             }
         });
@@ -581,12 +713,12 @@ fn open_editor_window(app: &AppHandle, main: &str) {
         with_doc(app, &m, |d| d.editor_text = Some(v.as_str().unwrap_or_default().to_string()));
         let dark = *state(app).dark.lock().unwrap();
         let built = WebviewWindowBuilder::new(app, &label, WebviewUrl::App("viewer.html".into()))
-            .title("Código")
+            .title(tr(app, "Código", "Code"))
             .inner_size(560.0, 820.0)
             .visible(false)
             .theme(Some(theme_of(dark)))
             .background_color(bg(dark))
-            .initialization_script(init_script(if dark { "dark" } else { "light" }, true))
+            .initialization_script(init_script(if dark { "dark" } else { "light" }, lang(app), true))
             .on_navigation(|url| url.scheme() == "tauri" || url.host_str() == Some("tauri.localhost"))
             .build();
         let Ok(win) = built else { return };
@@ -681,6 +813,7 @@ fn on_ready(app: &AppHandle, label: &str, m: &Value) {
         if let Some(t) = m["theme"].as_str() {
             let dark = t == "dark";
             *state(app).dark.lock().unwrap() = dark;
+            apply_gtk_theme(app, dark);
             if let Some(w) = app.get_webview_window(label) {
                 let _ = w.set_background_color(Some(bg(dark)));
             }
@@ -732,35 +865,45 @@ fn build_menu(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
         }
         b.build(app)
     };
-    let arquivo = SubmenuBuilder::new(app, "Arquivo")
-        .item(&item("open", "Abrir…", Some("CmdOrCtrl+O"))?)
-        .item(&item("save", "Salvar", Some("CmdOrCtrl+S"))?)
-        .item(&item("reload", "Recarregar do disco", Some("F5"))?)
+    let t = |pt, en| tr(app, pt, en);
+    let arquivo = SubmenuBuilder::new(app, t("Arquivo", "File"))
+        .item(&item("open", t("Abrir…", "Open…"), Some("CmdOrCtrl+O"))?)
+        .item(&item("save", t("Salvar", "Save"), Some("CmdOrCtrl+S"))?)
+        .item(&item("reload", t("Recarregar do disco", "Reload from disk"), Some("F5"))?)
         .separator()
-        .item(&item("export-svg", "Exportar diagrama como SVG…", Some("CmdOrCtrl+Shift+E"))?)
-        .item(&item("print", "Imprimir / salvar PDF…", Some("CmdOrCtrl+P"))?)
+        .item(&item("export-svg", t("Exportar diagrama como SVG…", "Export diagram as SVG…"), Some("CmdOrCtrl+Shift+E"))?)
+        .item(&item("print", t("Imprimir / salvar PDF…", "Print / save as PDF…"), Some("CmdOrCtrl+P"))?)
         .separator()
-        .item(&item("folder", "Mostrar na pasta", None)?)
-        .item(&item("edit", "Abrir no editor de texto", None)?)
+        .item(&item("folder", t("Mostrar na pasta", "Show in folder"), None)?)
+        .item(&item("edit", t("Abrir no editor de texto", "Open in text editor"), None)?)
         .separator()
-        .item(&item("new-window", "Nova janela", Some("CmdOrCtrl+N"))?)
-        .item(&item("close", "Fechar janela", Some("CmdOrCtrl+W"))?)
+        .item(&item("new-window", t("Nova janela", "New window"), Some("CmdOrCtrl+N"))?)
+        .item(&item("close", t("Fechar janela", "Close window"), Some("CmdOrCtrl+W"))?)
         .build()?;
-    let exibir = SubmenuBuilder::new(app, "Exibir")
-        .item(&item("toggle-editor", "Editor de código", Some("CmdOrCtrl+E"))?)
-        .item(&item("detach-editor", "Editor em janela separada", Some("CmdOrCtrl+Shift+O"))?)
-        .item(&item("find", "Buscar…", Some("CmdOrCtrl+F"))?)
-        .separator()
-        .item(&item("zoom-in", "Aumentar zoom", Some("CmdOrCtrl+="))?)
-        .item(&item("zoom-out", "Diminuir zoom", Some("CmdOrCtrl+-"))?)
-        .item(&item("zoom-reset", "Zoom 100%", Some("CmdOrCtrl+0"))?)
-        .item(&item("fit", "Ajustar à janela", Some("CmdOrCtrl+1"))?)
-        .separator()
-        .item(&item("theme", "Tema claro / escuro", Some("CmdOrCtrl+D"))?)
+    // o nome do submenu leva os dois idiomas: quem caiu no idioma errado ainda acha a opção
+    let chosen = state(app).settings.lock().unwrap().language().map(str::to_string);
+    let check = |id: &str, text: &str, on: bool| CheckMenuItemBuilder::with_id(id, text).checked(on).build(app);
+    let idioma = SubmenuBuilder::new(app, t("Idioma (Language)", "Language (Idioma)"))
+        .item(&check("lang-auto", t("Igual ao sistema", "Same as system"), chosen.is_none())?)
+        .item(&check("lang-pt", "Português", chosen.as_deref() == Some("pt"))?)
+        .item(&check("lang-en", "English", chosen.as_deref() == Some("en"))?)
         .build()?;
-    let ajuda = SubmenuBuilder::new(app, "Ajuda")
-        .item(&item("shortcuts", "Atalhos de teclado", Some("F1"))?)
-        .item(&item("about", "Sobre o Mirante", None)?)
+    let exibir = SubmenuBuilder::new(app, t("Exibir", "View"))
+        .item(&item("toggle-editor", t("Editor de código", "Code editor"), Some("CmdOrCtrl+E"))?)
+        .item(&item("detach-editor", t("Editor em janela separada", "Editor in a separate window"), Some("CmdOrCtrl+Shift+O"))?)
+        .item(&item("find", t("Buscar…", "Find…"), Some("CmdOrCtrl+F"))?)
+        .separator()
+        .item(&item("zoom-in", t("Aumentar zoom", "Zoom in"), Some("CmdOrCtrl+="))?)
+        .item(&item("zoom-out", t("Diminuir zoom", "Zoom out"), Some("CmdOrCtrl+-"))?)
+        .item(&item("zoom-reset", t("Zoom 100%", "Actual size"), Some("CmdOrCtrl+0"))?)
+        .item(&item("fit", t("Ajustar à janela", "Fit to window"), Some("CmdOrCtrl+1"))?)
+        .separator()
+        .item(&item("theme", t("Tema claro / escuro", "Light / dark theme"), Some("CmdOrCtrl+D"))?)
+        .item(&idioma)
+        .build()?;
+    let ajuda = SubmenuBuilder::new(app, t("Ajuda", "Help"))
+        .item(&item("shortcuts", t("Atalhos de teclado", "Keyboard shortcuts"), Some("F1"))?)
+        .item(&item("about", t("Sobre o Mirante", "About Mirante"), None)?)
         .build()?;
     MenuBuilder::new(app).item(&arquivo).item(&exibir).item(&ajuda).build()
 }
@@ -808,6 +951,9 @@ fn menu_action(app: &AppHandle, label: &str, id: &str) {
         }
         "shortcuts" => js(app, label, "mirante.showShortcuts()"),
         "about" => about(app, label),
+        "lang-auto" => set_language(app, None),
+        "lang-pt" => set_language(app, Some("pt")),
+        "lang-en" => set_language(app, Some("en")),
         _ => {}
     }
 }
@@ -819,13 +965,18 @@ enum Choice {
 }
 
 fn ask_unsaved(app: &AppHandle, label: &str, then: impl FnOnce(&AppHandle, Choice) + Send + 'static) {
-    let name = doc_path(app, label).map(|p| file_name(&p.to_string_lossy())).unwrap_or_else(|| "arquivo".into());
+    let name = doc_path(app, label).map(|p| file_name(&p.to_string_lossy())).unwrap_or_else(|| tr(app, "arquivo", "file").into());
+    let (save_b, discard_b, cancel_b) = (tr(app, "Salvar", "Save"), tr(app, "Descartar", "Don't Save"), tr(app, "Cancelar", "Cancel"));
+    let msg = match lang(app) {
+        Lang::Pt => format!("Salvar as alterações em “{name}”?\n\nSe você não salvar, as alterações serão perdidas."),
+        Lang::En => format!("Save changes to “{name}”?\n\nIf you don't save, your changes will be lost."),
+    };
     let mut d = app
         .dialog()
-        .message(format!("Salvar as alterações em “{name}”?\n\nSe você não salvar, as alterações serão perdidas."))
+        .message(msg)
         .title(APP_NAME)
         .kind(MessageDialogKind::Warning)
-        .buttons(MessageDialogButtons::YesNoCancelCustom("Salvar".into(), "Descartar".into(), "Cancelar".into()));
+        .buttons(MessageDialogButtons::YesNoCancelCustom(save_b.into(), discard_b.into(), cancel_b.into()));
     if let Some(w) = app.get_webview_window(label) {
         d = d.parent(&w);
     }
@@ -834,8 +985,8 @@ fn ask_unsaved(app: &AppHandle, label: &str, then: impl FnOnce(&AppHandle, Choic
         let choice = match r {
             MessageDialogResult::Yes => Choice::Save,
             MessageDialogResult::No => Choice::Discard,
-            MessageDialogResult::Custom(s) if s == "Salvar" => Choice::Save,
-            MessageDialogResult::Custom(s) if s == "Descartar" => Choice::Discard,
+            MessageDialogResult::Custom(s) if s == save_b => Choice::Save,
+            MessageDialogResult::Custom(s) if s == discard_b => Choice::Discard,
             _ => Choice::Cancel,
         };
         then(&h, choice);
@@ -854,10 +1005,15 @@ fn about(app: &AppHandle, label: &str) {
     let version = app.package_info().version.to_string();
     let mut d = app
         .dialog()
-        .message(format!(
-            "{APP_NAME} {version}\n\nVisualizador e editor de Markdown e diagramas Mermaid.\n\nCódigo e novidades:\nhttps://github.com/joseRibamar21/mirante_md_mmd\n\nLicença MIT."
-        ))
-        .title(format!("Sobre o {APP_NAME}"))
+        .message(match lang(app) {
+            Lang::Pt => format!(
+                "{APP_NAME} {version}\n\nVisualizador e editor de Markdown e diagramas Mermaid e Graphviz.\n\nCódigo e novidades:\nhttps://github.com/joseRibamar21/mirante_md_mmd\n\nLicença MIT."
+            ),
+            Lang::En => format!(
+                "{APP_NAME} {version}\n\nViewer and editor for Markdown and Mermaid and Graphviz diagrams.\n\nSource code and news:\nhttps://github.com/joseRibamar21/mirante_md_mmd\n\nMIT License."
+            ),
+        })
+        .title(tr(app, "Sobre o Mirante", "About Mirante"))
         .kind(MessageDialogKind::Info);
     if let Some(w) = app.get_webview_window(label) {
         d = d.parent(&w);
@@ -909,5 +1065,37 @@ mod tests {
             let img = Url::parse(&url).unwrap().join("img/foto%20nova.png").unwrap();
             assert_eq!(asset_path(&img).unwrap(), PathBuf::from("/home/ana/Meus Docs/img/foto nova.png"));
         }
+    }
+
+    #[test]
+    fn tipo_pela_extensao() {
+        assert_eq!(kind_for(Path::new("notas.md")), "md");
+        assert_eq!(kind_for(Path::new("mapa.MMD")), "mmd");
+        assert_eq!(kind_for(Path::new("grafo.gv")), "dot");
+        assert_eq!(kind_for(Path::new("grafo.dot")), "dot");
+        assert_eq!(kind_for(Path::new("notas.TXT")), "txt");
+        assert!(is_doc(Path::new("lista.txt")));
+        assert!(is_doc(Path::new("grafo.gv")) && is_doc(Path::new("a.mermaid")));
+        assert!(!is_doc(Path::new("foto.png")));
+    }
+
+    #[test]
+    fn variante_do_tema_gtk() {
+        let all = |_: &str| true;
+        assert_eq!(gtk_variant("Yaru-blue-dark", false, all).as_deref(), Some("Yaru-blue"));
+        assert_eq!(gtk_variant("Yaru-blue-dark", true, all).as_deref(), Some("Yaru-blue-dark"));
+        assert_eq!(gtk_variant("Adwaita", false, all), None); // tema claro: o GTK já obedece
+        assert_eq!(gtk_variant("Foo-dark", false, |n| n != "Foo"), None); // sem variante clara instalada
+    }
+
+    #[test]
+    fn idioma_pelo_sistema() {
+        assert_eq!(lang_from_locale("pt_BR.UTF-8"), Lang::Pt);
+        assert_eq!(lang_from_locale("pt-PT"), Lang::Pt);
+        assert_eq!(lang_from_locale("pt_BR:pt:en"), Lang::Pt);
+        assert_eq!(lang_from_locale("en_US.UTF-8"), Lang::En);
+        assert_eq!(lang_from_locale("es_ES.UTF-8"), Lang::En);
+        assert_eq!(lang_from_locale("C"), Lang::En);
+        assert_eq!(lang_from_locale(""), Lang::En);
     }
 }

@@ -4,20 +4,29 @@
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>MIT</project_license>
   <name>Mirante</name>
-  <summary>Visualize e edite Markdown e diagramas Mermaid</summary>
+  <summary>View and edit Markdown and Mermaid and Graphviz diagrams</summary>
+  <summary xml:lang="pt_BR">Visualize e edite Markdown e diagramas Mermaid e Graphviz</summary>
   <developer id="io.github.joseribamar21">
     <name>José Ribamar</name>
   </developer>
   <description>
     <p>
-      O Mirante abre arquivos Markdown (.md) e diagramas Mermaid (.mmd) com um visual limpo
-      e atualiza sozinho quando o arquivo muda no disco.
+      Mirante opens Markdown files (.md) and Mermaid (.mmd) and Graphviz (.gv, .dot) diagrams with a clean look
+      and reloads them by itself when the file changes on disk. The interface is in English and Portuguese.
+    </p>
+    <p xml:lang="pt_BR">
+      O Mirante abre arquivos Markdown (.md) e diagramas Mermaid (.mmd) e Graphviz (.gv, .dot) com um visual limpo
+      e atualiza sozinho quando o arquivo muda no disco. A interface está em português e em inglês.
     </p>
     <ul>
-      <li>Markdown com tabelas, listas de tarefas, código com destaque e diagramas no meio do texto</li>
-      <li>Mapas mentais editáveis: arraste os nós, renomeie e reorganize, com quatro layouts</li>
-      <li>Editor de código ao lado, com o desenho atualizando enquanto você digita</li>
-      <li>Tema claro e escuro, zoom suave e exportação para SVG e PDF</li>
+      <li>Markdown with tables, task lists, highlighted code and diagrams inside the text</li>
+      <li xml:lang="pt_BR">Markdown com tabelas, listas de tarefas, código com destaque e diagramas no meio do texto</li>
+      <li>Editable mind maps: drag nodes, rename and reorganize them, with four layouts</li>
+      <li xml:lang="pt_BR">Mapas mentais editáveis: arraste os nós, renomeie e reorganize, com quatro layouts</li>
+      <li>Code editor on the side, with the drawing updating as you type</li>
+      <li xml:lang="pt_BR">Editor de código ao lado, com o desenho atualizando enquanto você digita</li>
+      <li>Light and dark themes, smooth zoom and export to SVG and PDF</li>
+      <li xml:lang="pt_BR">Tema claro e escuro, zoom suave e exportação para SVG e PDF</li>
     </ul>
   </description>
   <launchable type="desktop-id">io.github.mirante.Viewer.desktop</launchable>
@@ -40,6 +49,7 @@
   <provides>
     <mediatype>text/markdown</mediatype>
     <mediatype>text/vnd.mermaid</mediatype>
+    <mediatype>text/vnd.graphviz</mediatype>
   </provides>
   <content_rating type="oars-1.1"/>
   <releases>

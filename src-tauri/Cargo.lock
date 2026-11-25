@@ -2117,8 +2117,9 @@ dependencies = [
 
 [[package]]
 name = "mirante"
-version = "0.1.0"
+version = "2.1.0"
 dependencies = [
+ "gtk",
  "notify",
  "percent-encoding",
  "serde",

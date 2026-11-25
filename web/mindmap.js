@@ -12,7 +12,13 @@
     dark: ["#0A84FF", "#BF5AF2", "#FF9F0A", "#30D158", "#FF375F", "#64D2FF", "#5E5CE6", "#FFD60A", "#FF453A", "#66D4CF"],
     light: ["#007AFF", "#AF52DE", "#F28C00", "#28A745", "#FF2D55", "#1E9BD7", "#5856D6", "#C99700", "#FF3B30", "#00A89F"],
   };
-  const NEW_TEXT = "Novo tópico";
+  /* textos que o motor escreve: trocados por setLang() quando a interface está em inglês */
+  const TEXTS = {
+    pt: { newText: "Novo tópico", empty: "Mapa vazio — adicione um nó raiz abaixo de <code>mindmap</code>." },
+    en: { newText: "New topic", empty: "Empty map — add a root node below <code>mindmap</code>." },
+  };
+  let T = TEXTS.pt;
+  const setLang = (l) => { T = TEXTS[l] || TEXTS.pt; };
 
   /* ---------------- parser ---------------- */
   function leadWidth(ws) { let n = 0; for (const ch of ws) n += ch === "\t" ? 4 : 1; return n; }
@@ -123,13 +129,13 @@
     },
     addChild(p, n) {
       const lines = p.lines.slice(), at = subtreeEnd(n) + 1;
-      lines.splice(at, 0, childWs(p, n) + NEW_TEXT);
+      lines.splice(at, 0, childWs(p, n) + T.newText);
       return { text: lines.join("\n"), line: at, rename: true };
     },
     addSibling(p, n) {
       if (!n.parent) return ops.addChild(p, n);
       const lines = p.lines.slice(), at = subtreeEnd(n) + 1;
-      lines.splice(at, 0, n.ws + NEW_TEXT);
+      lines.splice(at, 0, n.ws + T.newText);
       return { text: lines.join("\n"), line: at, rename: true };
     },
     remove(p, n) {
@@ -342,7 +348,7 @@
     host.innerHTML = "";
     host.classList.add("mm-host");
     if (!parsed || !parsed.root) {
-      host.innerHTML = '<div class="mm-empty">Mapa vazio — adicione um nó raiz abaixo de <code>mindmap</code>.</div>';
+      host.innerHTML = `<div class="mm-empty">${T.empty}</div>`;
       return { width: 400, height: 80, els: new Map() };
     }
     const pal = PALETTE[opts.theme === "light" ? "light" : "dark"];
@@ -410,5 +416,5 @@
     return { width: W, height: H, els };
   }
 
-  window.MiranteMindmap = { parse, render, ops, subtreeEnd, isAncestor, NEW_TEXT };
+  window.MiranteMindmap = { parse, render, ops, subtreeEnd, isAncestor, setLang };
 })();

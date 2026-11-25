@@ -40,6 +40,7 @@ struct Doc {
     watcher: Option<RecommendedWatcher>,
     reload_generation: u64,
     editor_text: Option<String>, // texto inicial da janela de código separada
+    block: Option<(String, usize)>, // janela que mostra só um diagrama de um .md: (janela do .md, nº do bloco)
 }
 
 type Reply = Box<dyn FnOnce(&AppHandle, Value) + Send>;
@@ -62,6 +63,35 @@ fn with_doc<T>(app: &AppHandle, label: &str, f: impl FnOnce(&mut Doc) -> T) -> O
 
 fn doc_path(app: &AppHandle, label: &str) -> Option<PathBuf> {
     with_doc(app, label, |d| d.path.clone()).flatten()
+}
+
+fn block_of(app: &AppHandle, label: &str) -> Option<(String, usize)> {
+    with_doc(app, label, |d| d.block.clone()).flatten()
+}
+
+/// Quem guarda o arquivo: a própria janela ou, no diagrama de um .md, a janela do .md.
+fn owner(app: &AppHandle, label: &str) -> String {
+    block_of(app, label).map(|(p, _)| p).unwrap_or_else(|| label.to_string())
+}
+
+fn file_of(app: &AppHandle, label: &str) -> Option<PathBuf> {
+    doc_path(app, &owner(app, label))
+}
+
+/// Janelas abertas com diagramas do .md desta janela.
+fn block_children(app: &AppHandle, parent: &str) -> Vec<(String, usize)> {
+    state(app)
+        .docs
+        .lock()
+        .unwrap()
+        .iter()
+        .filter_map(|(l, d)| d.block.as_ref().filter(|(p, _)| p == parent).map(|(_, i)| (l.clone(), *i)))
+        .collect()
+}
+
+/// Chave das preferências do diagrama (layout, espaçamento) dentro do .md.
+fn block_key(path: &Path, index: usize) -> String {
+    format!("{}#diagrama-{}", path.to_string_lossy(), index + 1)
 }
 
 // ---------------------------------------------------------------- idioma
@@ -361,7 +391,15 @@ fn new_window(app: &AppHandle) -> tauri::Result<WebviewWindow> {
         }
         WindowEvent::Destroyed => {
             let doc = state(&h).docs.lock().unwrap().remove(&l);
+            if let Some((parent, _)) = doc.as_ref().and_then(|d| d.block.clone()) {
+                if block_children(&h, &parent).is_empty() {
+                    js(&h, &parent, "mirante.setLinked(false)");
+                }
+            }
             drop(doc); // solta o watcher fora da trava
+            for (child, _) in block_children(&h, &l) {
+                destroy(&h, &child);
+            }
             if let Some(ed) = h.get_webview_window(&format!("{l}{EDITOR_SUFFIX}")) {
                 let _ = ed.destroy();
             }
@@ -417,17 +455,25 @@ fn navigate(app: &AppHandle, label: &str, url: &Url) -> bool {
 }
 
 fn update_title(app: &AppHandle, label: &str) {
-    let Some((path, dirty)) = with_doc(app, label, |d| (d.path.clone(), d.dirty)) else { return };
+    let block = block_of(app, label);
+    let Some(dirty) = with_doc(app, &owner(app, label), |d| d.dirty) else { return };
     let mark = if dirty { "● " } else { "" };
-    let title = match &path {
-        Some(p) => format!("{mark}{} — {APP_NAME}", file_name(&p.to_string_lossy())),
-        None => APP_NAME.to_string(),
+    let name = file_of(app, label).map(|p| file_name(&p.to_string_lossy()));
+    let title = match (&name, &block) {
+        (Some(n), Some((_, i))) => format!("{mark}{} {} — {n} — {APP_NAME}", tr(app, "Diagrama", "Diagram"), i + 1),
+        (Some(n), None) => format!("{mark}{n} — {APP_NAME}"),
+        (None, _) => APP_NAME.to_string(),
     };
     if let Some(w) = app.get_webview_window(label) {
         let _ = w.set_title(&title);
     }
-    if let (Some(ed), Some(p)) = (app.get_webview_window(&format!("{label}{EDITOR_SUFFIX}")), &path) {
-        let _ = ed.set_title(&format!("{mark}{} — {}", tr(app, "Código", "Code"), file_name(&p.to_string_lossy())));
+    if let (Some(ed), Some(n)) = (app.get_webview_window(&format!("{label}{EDITOR_SUFFIX}")), &name) {
+        let _ = ed.set_title(&format!("{mark}{} — {n}", tr(app, "Código", "Code")));
+    }
+    if block.is_none() {
+        for (child, _) in block_children(app, label) {
+            update_title(app, &child);
+        }
     }
 }
 
@@ -509,6 +555,17 @@ fn open_path(app: &AppHandle, label: &str, path: PathBuf) {
 }
 
 fn open_now(app: &AppHandle, label: &str, path: PathBuf) {
+    // a janela de um diagrama do .md que abre um arquivo vira uma janela comum
+    if let Some((parent, _)) = with_doc(app, label, |d| d.block.take()).flatten() {
+        if block_children(app, &parent).is_empty() {
+            js(app, &parent, "mirante.setLinked(false)");
+        }
+    }
+    if doc_path(app, label).as_deref() != Some(path.as_path()) {
+        for (child, _) in block_children(app, label) {
+            destroy(app, &child);
+        }
+    }
     with_doc(app, label, |d| {
         d.path = Some(path.clone());
         d.dirty = false;
@@ -550,6 +607,7 @@ fn load(app: &AppHandle, label: &str, keep_scroll: bool) {
 }
 
 fn reload_from_disk(app: &AppHandle, label: &str) {
+    let label = &owner(app, label);
     if doc_path(app, label).is_none() {
         return;
     }
@@ -571,6 +629,9 @@ fn reload_from_disk(app: &AppHandle, label: &str) {
 type Then = Box<dyn FnOnce(&AppHandle) + Send>;
 
 fn save(app: &AppHandle, label: &str, then: Option<Then>) {
+    if let Some((parent, _)) = block_of(app, label) {
+        return save(app, &parent, then);
+    }
     let Some(path) = doc_path(app, label) else { return };
     let l = label.to_string();
     ask(app, label, "mirante.getSource()", move |app, v| {
@@ -672,7 +733,8 @@ fn open_dialog(app: &AppHandle, label: &str) {
 }
 
 fn export_svg(app: &AppHandle, label: &str) {
-    let Some(path) = doc_path(app, label) else { return };
+    let Some(path) = file_of(app, label) else { return };
+    let block = block_of(app, label);
     let l = label.to_string();
     ask(app, label, "mirante.getSvg()", move |app, v| {
         let svg = v.as_str().unwrap_or_default().to_string();
@@ -680,7 +742,10 @@ fn export_svg(app: &AppHandle, label: &str) {
             error(app, &l, tr(app, "Não há diagrama renderizado para exportar.", "There is no rendered diagram to export."));
             return;
         }
-        let stem = path.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_else(|| tr(app, "diagrama", "diagram").into());
+        let mut stem = path.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_else(|| tr(app, "diagrama", "diagram").into());
+        if let Some((_, i)) = block {
+            stem = format!("{stem}-{}-{}", tr(app, "diagrama", "diagram"), i + 1);
+        }
         let mut d = app.dialog().file().set_title(tr(app, "Exportar SVG", "Export SVG")).add_filter("SVG", &["svg"]).set_file_name(format!("{stem}.svg"));
         if let Some(dir) = path.parent() {
             d = d.set_directory(dir);
@@ -709,6 +774,51 @@ fn open_in_text_editor(app: &AppHandle, path: &Path) {
     }
 }
 
+// ---------------------------------------------------------------- diagrama de um .md em janela própria
+
+/// Abre o diagrama nº `index` do .md numa janela só dele. Ela fica ligada ao bloco: o que se edita lá
+/// volta para o .md na hora (e Ctrl+S salva o .md); o que muda no .md chega lá.
+fn open_block_window(app: &AppHandle, parent: &str, index: usize) {
+    if let Some((child, _)) = block_children(app, parent).into_iter().find(|(_, i)| *i == index) {
+        if let Some(w) = app.get_webview_window(&child) {
+            let _ = w.set_focus();
+        }
+        return;
+    }
+    let Some(path) = doc_path(app, parent) else { return };
+    let p = parent.to_string();
+    ask(app, parent, &format!("mirante.getBlock({index})"), move |app, v| {
+        let Some(code) = v["code"].as_str() else { return };
+        let key = block_key(&path, index);
+        let payload = json!({
+            "kind": if v["lang"] == "dot" { "dot" } else { "mmd" },
+            "text": code,
+            "path": key,
+            "base": asset_dir_url(path.parent().unwrap_or(Path::new("/"))),
+            "keepScroll": false,
+            "prefs": state(app).settings.lock().unwrap().prefs_for(&key),
+            "block": true,
+        });
+        let Ok(win) = new_window(app) else { return };
+        let label = win.label().to_string();
+        let now = with_doc(app, &label, |d| {
+            d.block = Some((p.clone(), index));
+            if d.ready {
+                Some(payload)
+            } else {
+                d.pending = Some(payload);
+                None
+            }
+        })
+        .flatten();
+        if let Some(payload) = now {
+            js(app, &label, &format!("mirante.render({payload})"));
+        }
+        update_title(app, &label);
+        js(app, &p, "mirante.setLinked(true)");
+    });
+}
+
 // ---------------------------------------------------------------- janela de código separada
 
 fn editor_label(main: &str) -> String {
@@ -721,7 +831,7 @@ fn open_editor_window(app: &AppHandle, main: &str) {
         let _ = w.set_focus();
         return;
     }
-    if doc_path(app, main).is_none() {
+    if file_of(app, main).is_none() {
         return;
     }
     let m = main.to_string();
@@ -798,12 +908,28 @@ async fn page_message(app: AppHandle, webview_window: WebviewWindow, msg: String
     }
     match t {
         "ready" => on_ready(&app, &label, &m),
-        "dirty" => {
+        "dirty" if block_of(&app, &label).is_none() => {
             with_doc(&app, &label, |d| d.dirty = m["value"].as_bool().unwrap_or(false));
             update_title(&app, &label);
         }
+        "openBlock" => open_block_window(&app, &label, m["index"].as_u64().unwrap_or(0) as usize),
+        "blockEdit" => {
+            if let Some((parent, i)) = block_of(&app, &label) {
+                js(&app, &parent, &format!("mirante.replaceBlock({i}, {})", js_str(m["text"].as_str().unwrap_or_default())));
+            }
+        }
+        "blocks" => {
+            for (child, i) in block_children(&app, &label) {
+                if let Some(code) = m["list"][i].as_str() {
+                    js(&app, &child, &format!("mirante.setBlockText({})", js_str(code)));
+                }
+            }
+        }
         "prefs" => {
-            let path = doc_path(&app, &label).map(|p| p.to_string_lossy().into_owned());
+            let path = match block_of(&app, &label) {
+                Some((parent, i)) => doc_path(&app, &parent).map(|p| block_key(&p, i)),
+                None => doc_path(&app, &label).map(|p| p.to_string_lossy().into_owned()),
+            };
             state(&app).settings.lock().unwrap().set_prefs(path.as_deref(), &m["prefs"]);
         }
         "source" => js(&app, &editor_label(&label), &format!("mirante.setSource({})", js_str(m["text"].as_str().unwrap_or_default()))),
@@ -928,7 +1054,7 @@ fn build_menu(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
 }
 
 fn menu_action(app: &AppHandle, label: &str, id: &str) {
-    let path = doc_path(app, label);
+    let path = file_of(app, label);
     match id {
         "open" => open_dialog(app, label),
         "save" => save(app, label, None),

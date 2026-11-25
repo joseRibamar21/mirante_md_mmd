@@ -28,6 +28,9 @@ edite direto nele: o painel de código fica ao lado e o desenho acompanha enquan
 
 - **Markdown completo**: tabelas, listas de tarefas, código com destaque de sintaxe, citações, links
   internos e diagramas Mermaid e Graphviz no meio do texto (blocos ` ```mermaid ` e ` ```dot `).
+- **Diagramas do Markdown com controles próprios**: zoom, mover arrastando ou pelos botões e **expandir** em
+  tela cheia sobre fundo escuro. Também dá para abrir um diagrama numa **janela só dele**, ligada ao `.md`:
+  o que se edita lá volta para o bloco na hora, e <kbd>Ctrl</kbd> <kbd>S</kbd> salva o `.md`.
 - **Qualquer diagrama Mermaid** em arquivos `.mmd`: fluxogramas, sequência, Gantt, classes, estados e outros.
 - **Grafos Graphviz** em arquivos `.gv` e `.dot`, com todos os motores de layout (`dot`, `neato`, `circo`,
   `twopi`, `fdp` e outros, escolhidos pelo atributo `layout` do grafo), sem precisar instalar o Graphviz.

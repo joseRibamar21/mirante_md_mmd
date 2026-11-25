@@ -53,6 +53,13 @@
   </provides>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="2.3.0" date="2026-11-25">
+      <description>
+        <p>Diagramas dentro do Markdown ganharam zoom, movimento e modo expandido em tela cheia, e podem
+        ser abertos numa janela própria ligada ao arquivo: o que se edita lá volta para o .md. Títulos de
+        grupos (subgraph) do Mermaid não ficam mais por cima das caixas.</p>
+      </description>
+    </release>
     <release version="2.2.0" date="2026-11-25">
       <description>
         <p>Diagramas Graphviz (.gv e .dot), interface em português e em inglês, texto simples (.txt)

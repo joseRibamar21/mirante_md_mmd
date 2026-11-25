@@ -94,6 +94,6 @@ jobs:
             | **Windows 10 e 11** | `Mirante-windows-x64-setup.exe` (recomendado) ou `Mirante-windows-x64.msi` |
             | **Ubuntu 22.04+ / Debian 12+** | `Mirante-linux-amd64.deb` → `sudo apt install ./Mirante-linux-amd64.deb` |
 
-            No Windows o instalador registra o Mirante para abrir `.md` e `.mmd`. Se o SmartScreen avisar
+            No Windows o instalador registra o Mirante para abrir `.md`, `.mmd`, `.gv` e `.txt`. Se o SmartScreen avisar
             que o app é de um editor desconhecido, clique em **Mais informações → Executar assim mesmo**
             (o instalador ainda não tem assinatura digital).

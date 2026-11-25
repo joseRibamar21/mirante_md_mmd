@@ -101,10 +101,16 @@ jobs:
           New-Item -ItemType Directory shots | Out-Null
 
           Start-Process $env:MIRANTE_EXE -ArgumentList "`"$PWD\exemplos\mapa-mental.mmd`""
-          Start-Sleep 15
-          $p = Get-Process mirante -ErrorAction SilentlyContinue
-          if (-not $p) { throw "o Mirante fechou sozinho" }
-          $title = $p.MainWindowTitle
+          # a janela nasce oculta e na primeira abertura da VM pode demorar; enquanto isso o
+          # MainWindowTitle é o da janela escondida da instância única ("...-siw")
+          $title = ""
+          for ($i = 0; $i -lt 60 -and $title -notlike '*mapa-mental.mmd*'; $i++) {
+            Start-Sleep 1
+            $p = Get-Process mirante -ErrorAction SilentlyContinue
+            if (-not $p -and $i -ge 10) { throw "o Mirante fechou sozinho" }
+            if ($p) { $title = @($p)[0].MainWindowTitle }
+          }
+          Start-Sleep 3   # deixa o desenho terminar antes da captura
           Write-Host "Título da janela: $title"
           Shot "1-mapa-mental"
 

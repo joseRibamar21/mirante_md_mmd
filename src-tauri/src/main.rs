@@ -250,15 +250,34 @@ fn gtk_variant(original: &str, dark: bool, exists: impl Fn(&str) -> bool) -> Opt
 }
 
 /// Troca o tema GTK do processo (barra de menu, caixas de diálogo) junto com o tema do Mirante.
+///
+/// Além do nome do tema, fixa a preferência "prefer dark" do GTK: o tao (camada de janelas do Tauri)
+/// a copia do esquema de cores do sistema a cada janela criada, e com ela ligada até o tema claro
+/// carrega a variante escura (menu de texto branco). Por isso a preferência é vigiada e reposta.
 fn apply_gtk_theme(app: &AppHandle, dark: bool) {
     #[cfg(target_os = "linux")]
     let _ = app.run_on_main_thread(move || {
         use gtk::prelude::*;
+        use std::sync::atomic::AtomicBool;
         static ORIGINAL: OnceLock<Option<String>> = OnceLock::new();
+        static WANT_DARK: AtomicBool = AtomicBool::new(false);
+        static WATCH: std::sync::Once = std::sync::Once::new();
         if std::env::var_os("GTK_THEME").is_some() {
             return; // o usuário fixou o tema; GtkSettings não manda nele
         }
         let Some(settings) = gtk::Settings::default() else { return };
+        WANT_DARK.store(dark, Ordering::Relaxed);
+        WATCH.call_once(|| {
+            settings.connect_gtk_application_prefer_dark_theme_notify(|s| {
+                let want = WANT_DARK.load(Ordering::Relaxed);
+                if s.is_gtk_application_prefer_dark_theme() != want {
+                    s.set_gtk_application_prefer_dark_theme(want);
+                }
+            });
+        });
+        if settings.is_gtk_application_prefer_dark_theme() != dark {
+            settings.set_gtk_application_prefer_dark_theme(dark);
+        }
         let original = ORIGINAL.get_or_init(|| settings.gtk_theme_name().map(|s| s.to_string()));
         let Some(original) = original else { return };
         if let Some(want) = gtk_variant(original, dark, gtk_theme_exists) {

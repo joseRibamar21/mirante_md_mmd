@@ -53,6 +53,13 @@
   </provides>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="2.2.0" date="2026-11-25">
+      <description>
+        <p>Diagramas Graphviz (.gv e .dot), interface em português e em inglês, texto simples (.txt)
+        aberto direto no editor, Markdown sem cartão e editor com rolagem suave. No Linux, a barra de
+        menu agora acompanha o tema claro.</p>
+      </description>
+    </release>
     <release version="2.1.0" date="2026-11-13">
       <description>
         <p>Agora também no Windows: a camada nativa foi reescrita com Tauri. Busca no texto e lista de

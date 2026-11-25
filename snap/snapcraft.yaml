@@ -62,6 +62,16 @@ parts:
       craftctl default
       craftctl set version="$(sed -n 's/^version = "\(.*\)"/\1/p' src-tauri/Cargo.toml | head -1)"
     override-build: |
+      # a extensão gnome põe as bibliotecas do SDK (inclusive uma libc) no LD_LIBRARY_PATH, o que
+      # quebra o rustup, o cargo e o node; o linker só precisa saber onde elas estão (rpath-link)
+      sdk_libs="${LD_LIBRARY_PATH:-}"
+      unset LD_LIBRARY_PATH
+      RUSTFLAGS=""
+      IFS=: read -ra dirs <<< "$sdk_libs"
+      for d in "${dirs[@]}"; do
+        [ -n "$d" ] && RUSTFLAGS="$RUSTFLAGS -C link-arg=-Wl,-rpath-link=$d"
+      done
+      export RUSTFLAGS
       rustup toolchain install stable --profile minimal
       rustup default stable
       npm ci

@@ -28,6 +28,7 @@
     view: { x: 0, y: 0, s: 1 }, bounds: { w: 0, h: 0 }, mdZoom: 1, hasFit: false,
     parsed: null, els: null, selected: null, editing: null,
     history: [], future: [], typing: false, editorOpen: false, seq: 0, popover: null, detached: false,
+    block: false, blockSent: "", linked: false, quietBlocks: null, // diagrama de um .md aberto em janela própria
   };
 
   /* Ponte com a camada nativa: Tauri (Windows e Linux) ou o app GTK antigo. Fora do app, nada. */
@@ -45,7 +46,10 @@
    * que faltar no dicionário aparece em português. {n} e afins são trocados pelos valores. O app
    * injeta MIRANTE_LANG antes do HTML; fora dele vale o idioma do navegador. */
   const EN = {
-    "Código": "Code", "Texto": "Text", "Editor de código": "Code editor", "Abrir em janela separada": "Open in a separate window",
+    "Código": "Code", "Texto": "Text", "Editor de código": "Code editor", "Abrir em janela separada": "Open in a separate window", "Abrir em nova janela": "Open in a new window", "Expandir": "Expand",
+    "Afastar": "Zoom out", "Aproximar": "Zoom in", "Mover para a esquerda": "Move left", "Mover para a direita": "Move right",
+    "Voltar ao tamanho original": "Reset view", "Fechar (Esc)": "Close (Esc)",
+    "Não foi possível atualizar o diagrama no arquivo.": "Could not update the diagram in the file.",
     "Fechar editor (Ctrl+E)": "Close editor (Ctrl+E)", "Arraste para redimensionar": "Drag to resize",
     "Voltar o editor para a janela principal": "Move the editor back to the main window",
     welcome: "Open a <b>.md</b>, <b>.mmd</b>, <b>.gv</b> or <b>.txt</b> file with <kbd>Ctrl</kbd> <kbd>O</kbd><br>or drag it into this window.",
@@ -134,6 +138,8 @@
     redo: '<path d="M15 14l5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 000 11H13"/>',
     external: '<path d="M14 4h6v6M20 4l-8.5 8.5"/><path d="M18 14v4.5a1.5 1.5 0 01-1.5 1.5h-11A1.5 1.5 0 014 18.5v-11A1.5 1.5 0 015.5 6H10"/>',
     attach: '<rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M9.5 4v16"/>',
+    expand: '<path d="M14 4h6v6M10 20H4v-6M20 4l-6.5 6.5M4 20l6.5-6.5"/>',
+    reset: '<path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v4.5h4.5"/>',
     doc: '<path d="M14 3.5H7.5A1.5 1.5 0 006 5v14a1.5 1.5 0 001.5 1.5h9A1.5 1.5 0 0018 19V7.5z"/><path d="M14 3.5v4h4M9 12.5h6M9 16h4"/>',
   };
   const icon = (n) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${P[n]}</svg>`;
@@ -181,7 +187,10 @@
     return {
       startOnLoad: false, securityLevel: "strict", theme: "base", themeVariables: tv,
       fontFamily: '"Inter Variable", "Noto Sans", sans-serif',
-      flowchart: { nodeSpacing: S.prefs.nodeSpacing, rankSpacing: S.prefs.rankSpacing, curve: "basis", htmlLabels: true },
+      flowchart: {
+        nodeSpacing: S.prefs.nodeSpacing, rankSpacing: S.prefs.rankSpacing, curve: "basis", htmlLabels: true,
+        subGraphTitleMargin: { top: 4, bottom: 10 }, // respiro entre o título do subgraph e o conteúdo
+      },
       mindmap: { padding: 14, maxNodeWidth: S.prefs.cardWidth },
     };
   }
@@ -287,15 +296,209 @@
     el.innerHTML = r.svg;
     return true;
   }
+  const FRONT_MATTER = /^﻿?---\r?\n[\s\S]*?\r?\n(---|\.\.\.)\r?\n?/;
+  const DIAGRAM_LANGS = { mermaid: "mmd", mmd: "mmd", dot: "dot", graphviz: "dot", gv: "dot" };
+  /* os blocos de diagrama do .md, na mesma ordem em que são desenhados */
+  function diagramBlocks(text = S.text) {
+    const out = [];
+    marked.walkTokens(marked.lexer(text.replace(FRONT_MATTER, "")), (t) => {
+      if (t.type !== "code") return;
+      const lang = DIAGRAM_LANGS[(t.lang || "").trim().split(/\s+/)[0].toLowerCase()];
+      if (lang) out.push({ code: t.text, lang, raw: t.raw });
+    });
+    return out;
+  }
+  /* troca o código do bloco i (edição vinda da janela do diagrama) */
+  const indentLines = (t, ind) => (ind ? t.split("\n").map((l, k) => (k && l ? ind + l : l)).join("\n") : t);
+  /* onde o bloco está no texto; dentro de uma lista o raw do marked vem sem o recuo, que é refeito aqui */
+  function locateBlock(raw, pos) {
+    const at = S.text.indexOf(raw, pos);
+    if (at >= 0) return { at, len: raw.length, indent: "" };
+    const first = raw.slice(0, raw.indexOf("\n") + 1 || raw.length);
+    for (let i = S.text.indexOf(first, pos); i >= 0; i = S.text.indexOf(first, i + 1)) {
+      const indent = S.text.slice(S.text.lastIndexOf("\n", i - 1) + 1, i);
+      if (!/^[ \t]+$/.test(indent)) continue;
+      const full = indentLines(raw, indent);
+      if (S.text.startsWith(full, i)) return { at: i, len: full.length, indent };
+    }
+    return null;
+  }
+  function replaceBlock(i, code) {
+    const blocks = diagramBlocks(), b = blocks[i];
+    if (!b) return false;
+    let pos = 0, loc = null;
+    for (let k = 0; k <= i; k++) {
+      loc = locateBlock(blocks[k].raw, pos);
+      if (!loc) return false;
+      pos = loc.at + loc.len;
+    }
+    const nl = b.raw.indexOf("\n"), off = nl < 0 ? -1 : b.raw.indexOf(b.code, nl + 1);
+    if (off < 0) return false;
+    const raw = b.raw.slice(0, off) + code + b.raw.slice(off + b.code.length);
+    const text = S.text.slice(0, loc.at) + indentLines(raw, loc.indent) + S.text.slice(loc.at + loc.len);
+    if (text === S.text) return true;
+    if (!S.typing) pushHistory(S.text);
+    S.typing = true; clearTimeout(S.typeT); S.typeT = setTimeout(() => (S.typing = false), 900);
+    S.text = text; S.quietBlocks = text;   // quem mudou foi a janela do diagrama: não devolve para ela
+    syncEditor(); setDirty(S.text !== S.saved); notifySource();
+    scheduleLiveDraw();
+    return true;
+  }
+  /* ---------------- diagramas no .md: mover, zoom e tela cheia (só visualização) ---------------- */
+  /* arrastar move; roda com Ctrl (ou sempre, se wheelZoom) dá zoom no ponto do mouse */
+  function panZoom(view, pan, o = {}) {
+    const st = { x: 0, y: 0, s: 1 };
+    const apply = (anim) => {
+      pan.style.transition = anim && !calm() ? "transform .24s cubic-bezier(.32, .72, 0, 1)" : "none";
+      pan.style.transform = `translate(${st.x}px, ${st.y}px) scale(${st.s})`;
+      if (o.onChange) o.onChange(st);
+    };
+    const zoomAt = (k, cx, cy, anim) => {
+      const s2 = clamp(st.s * k, o.min || 0.25, o.max || 6);
+      k = s2 / st.s;
+      st.x = cx - (cx - st.x) * k; st.y = cy - (cy - st.y) * k; st.s = s2;
+      apply(anim);
+    };
+    const mid = () => { const r = view.getBoundingClientRect(); return [r.width / 2, r.height / 2]; };
+    let drag = null;
+    view.addEventListener("pointerdown", (e) => {
+      if (e.button !== 0 || e.target.closest("button")) return;
+      drag = { id: e.pointerId, x: e.clientX, y: e.clientY, sx: st.x, sy: st.y };
+      view.setPointerCapture(e.pointerId);
+      view.classList.add("dragging");
+      e.preventDefault();
+    });
+    view.addEventListener("pointermove", (e) => {
+      if (!drag || e.pointerId !== drag.id) return;
+      st.x = drag.sx + e.clientX - drag.x; st.y = drag.sy + e.clientY - drag.y;
+      apply(false);
+    });
+    const end = () => { drag = null; view.classList.remove("dragging"); };
+    view.addEventListener("pointerup", end);
+    view.addEventListener("pointercancel", end);
+    view.addEventListener("wheel", (e) => {
+      if (!o.wheelZoom && !(e.ctrlKey || e.metaKey)) return;   // sem Ctrl, a roda continua rolando o texto
+      e.preventDefault(); e.stopPropagation();
+      const r = view.getBoundingClientRect();
+      zoomAt(Math.exp(-clamp(e.deltaY, -60, 60) * 0.006), e.clientX - r.left, e.clientY - r.top, false);
+    }, { passive: false });
+    return {
+      st, apply,
+      zoom: (d) => zoomAt(d > 0 ? 1.25 : 0.8, ...mid(), true),
+      move: (dx, dy) => { st.x += dx; st.y += dy; apply(true); },
+      set: (x, y, s2, anim) => { st.x = x; st.y = y; st.s = s2; apply(anim); },
+    };
+  }
+  const toolBtn = (cmd, ic, title) => `<button class="icon-btn small" data-blk="${cmd}" title="${tr(title)}">${icon(ic)}</button>`;
+  /* o bloco ganha uma área que move e dá zoom, e uma barrinha no canto */
+  function enhanceBlock(el, i) {
+    if (!el.querySelector("svg, .mm-host")) return;              // erro de sintaxe: fica como está
+    const view = document.createElement("div"), pan = document.createElement("div");
+    view.className = "blk-view"; pan.className = "blk-pan";
+    pan.append(...el.childNodes); view.appendChild(pan); el.appendChild(view);
+    const pz = panZoom(view, pan);
+    const bar = document.createElement("div");
+    bar.className = "blk-tools";
+    bar.innerHTML = toolBtn("out", "minus", "Afastar") + toolBtn("in", "plus", "Aproximar") +
+      toolBtn("left", "aLeft", "Mover para a esquerda") + toolBtn("right", "aRight", "Mover para a direita") +
+      toolBtn("reset", "reset", "Voltar ao tamanho original") + '<span class="blk-sep"></span>' +
+      toolBtn("expand", "expand", "Expandir") +
+      (IN_APP && !S.block ? toolBtn("window", "external", "Abrir em nova janela") : "");
+    bar.addEventListener("click", (e) => {
+      const b = e.target.closest("button[data-blk]");
+      if (!b) return;
+      e.stopPropagation();
+      const step = view.clientWidth * 0.25;
+      ({
+        out: () => pz.zoom(-1), in: () => pz.zoom(1),
+        left: () => pz.move(step, 0), right: () => pz.move(-step, 0),
+        reset: () => pz.set(0, 0, 1, true),
+        expand: () => openBlockModal(pan),
+        window: () => post({ type: "openBlock", index: i }),
+      })[b.dataset.blk]();
+    });
+    el.appendChild(bar);
+  }
+
+  /* tela cheia: o diagrama solto sobre um fundo escuro, sem cartão */
+  let modal = null;
+  function openBlockModal(srcPan) {
+    closeBlockModal(true);
+    const m = document.createElement("div");
+    m.id = "blk-modal";
+    m.innerHTML = `<div class="bm-view"><div class="bm-pan"></div></div>
+      <div class="bm-bar glass-pill">${toolBtn("out", "minus", "Afastar")}<span class="bm-zoom">100%</span>${toolBtn("in", "plus", "Aproximar")}
+      <span class="blk-sep"></span>${toolBtn("left", "aLeft", "Mover para a esquerda")}${toolBtn("right", "aRight", "Mover para a direita")}
+      ${toolBtn("fit", "fit", "Ajustar à janela")}<span class="blk-sep"></span>${toolBtn("close", "close", "Fechar (Esc)")}</div>`;
+    const view = m.querySelector(".bm-view"), pan = m.querySelector(".bm-pan");
+    for (const n of srcPan.childNodes) pan.appendChild(n.cloneNode(true));
+    // tamanho natural: o SVG do Mermaid vem com largura 100%; o mapa mental vem reduzido para caber no texto
+    const svg = pan.querySelector(":scope > svg");
+    if (svg && svg.viewBox && svg.viewBox.baseVal && svg.viewBox.baseVal.width) {
+      const vb = svg.viewBox.baseVal;
+      svg.setAttribute("width", vb.width); svg.setAttribute("height", vb.height);
+      svg.style.maxWidth = "none";
+    }
+    const host = pan.querySelector(".mm-host");
+    if (host) {
+      host.style.transform = "none";
+      const box = host.parentElement;
+      if (box !== pan) { box.style.width = "auto"; box.style.height = "auto"; box.style.overflow = "visible"; }
+    }
+    body.appendChild(m);
+    body.classList.add("blk-modal-open");
+    const zl = m.querySelector(".bm-zoom");
+    const pz = panZoom(view, pan, { wheelZoom: true, min: 0.1, max: 8, onChange: (st) => (zl.textContent = Math.round(st.s * 100) + "%") });
+    const fitIt = (anim) => {
+      const w = pan.offsetWidth, h = pan.offsetHeight, W = view.clientWidth, H = view.clientHeight - 90;
+      const s2 = Math.min(2, (W * 0.92) / w, (H * 0.92) / h);
+      pz.set((W - w * s2) / 2, (H - h * s2) / 2 + 10, s2, anim);
+    };
+    fitIt(false);
+    m.querySelector(".bm-bar").addEventListener("click", (e) => {
+      const b = e.target.closest("button[data-blk]");
+      if (!b) return;
+      const step = view.clientWidth * 0.2;
+      ({
+        out: () => pz.zoom(-1), in: () => pz.zoom(1),
+        left: () => pz.move(step, 0), right: () => pz.move(-step, 0),
+        fit: () => fitIt(true), close: () => closeBlockModal(),
+      })[b.dataset.blk]();
+    });
+    const onKey = (e) => {
+      const k = e.key;
+      const act = {
+        Escape: () => closeBlockModal(), "+": () => pz.zoom(1), "=": () => pz.zoom(1), "-": () => pz.zoom(-1), "0": () => fitIt(true),
+        ArrowLeft: () => pz.move(80, 0), ArrowRight: () => pz.move(-80, 0), ArrowUp: () => pz.move(0, 80), ArrowDown: () => pz.move(0, -80),
+      }[k];
+      if (!act || e.ctrlKey || e.metaKey || e.altKey) return;
+      e.preventDefault(); e.stopImmediatePropagation(); act();
+    };
+    const onResize = () => fitIt(false);
+    document.addEventListener("keydown", onKey, true);
+    addEventListener("resize", onResize);
+    modal = { el: m, off: () => { document.removeEventListener("keydown", onKey, true); removeEventListener("resize", onResize); } };
+  }
+  function closeBlockModal(now) {
+    if (!modal) return;
+    const { el, off } = modal;
+    modal = null; off();
+    body.classList.remove("blk-modal-open");
+    if (now || calm()) { el.remove(); return; }
+    el.classList.add("closing");
+    setTimeout(() => el.remove(), 180);
+  }
   async function renderMarkdown(my) {
-    const raw = marked.parse(S.text.replace(/^﻿?---\r?\n[\s\S]*?\r?\n(---|\.\.\.)\r?\n?/, ""));
+    const raw = marked.parse(S.text.replace(FRONT_MATTER, ""));
     E.doc.innerHTML = DOMPurify.sanitize(raw, { ADD_ATTR: ["data-mermaid", "data-dot", "target"] });
     addHeadingIds(E.doc);
-    for (const el of E.doc.querySelectorAll(".mermaid-block")) {
+    const blockEls = [...E.doc.querySelectorAll(".mermaid-block")];
+    for (const [i, el] of blockEls.entries()) {
       if (el.dataset.dot != null) {
         const r = await dotSvg(decodeURIComponent(el.dataset.dot));
         if (my !== S.seq) return;
         el.innerHTML = r.error ? errorBox(tr("Erro no grafo Graphviz"), r.error) : r.svg;
+        enhanceBlock(el, i);
         continue;
       }
       const code = decodeURIComponent(el.dataset.mermaid || "");
@@ -314,7 +517,10 @@
         await mermaidInto(el, code, my);
       }
       if (my !== S.seq) return;
+      enhanceBlock(el, i);
     }
+    // janelas de diagrama abertas: mudanças feitas aqui (ou no disco) vão para elas
+    if (S.linked && S.text !== S.quietBlocks) post({ type: "blocks", list: diagramBlocks().map((b) => b.code) });
   }
 
   /* ---------------- Graphviz (.gv / .dot) ----------------
@@ -844,7 +1050,16 @@
   }
 
   /* ---------------- texto, histórico, sujo ---------------- */
-  function setDirty(d) { if (d !== S.dirty) { S.dirty = d; post({ type: "dirty", value: d }); } }
+  function setDirty(d) {
+    if (S.block) return syncBlock();    // o diagrama de um .md não tem arquivo: quem fica sujo é o .md
+    if (d !== S.dirty) { S.dirty = d; post({ type: "dirty", value: d }); }
+  }
+  function syncBlock() {
+    clearTimeout(S.blockT);
+    S.blockT = setTimeout(() => {
+      if (S.text !== S.blockSent) { S.blockSent = S.text; post({ type: "blockEdit", text: S.text }); }
+    }, 150);
+  }
   function setText(t, { history }) {
     if (history) pushHistory(S.text);
     S.text = t;
@@ -1521,11 +1736,13 @@
       body.classList.add("is-loading");
     }
     if (S.editing) { S.editing.label.onblur = null; S.editing = null; }
+    if (fresh) closeBlockModal(true);
     S.path = p.path || null;
     // .gv/.dot usa o mesmo palco dos diagramas Mermaid ("mmd"); S.lang diz quem desenha
     S.kind = p.kind === "dot" ? "mmd" : p.kind;
     S.lang = p.kind === "dot" ? "dot" : null;
     if (p.prefs) S.prefs = { ...DEFAULTS, ...p.prefs };
+    S.block = !!p.block; S.blockSent = p.text;
     if (fresh) { S.history = []; S.future = []; S.selected = null; S.mdZoom = 1; S.hasFit = false; }
     else if (p.text !== S.text) pushHistory(S.text);
     S.text = p.text; S.saved = p.text; S.typing = false;
@@ -1654,6 +1871,16 @@
     initEditor: (o) => { applyTheme(o.theme); S.text = o.text; E.src.value = o.text; syncEditor(); E.src.focus(); },
     setSource: (text) => { if (text !== E.src.value) { S.text = text; syncEditor(); } },
     revealLine: (line) => revealLine(line),
+    /* diagrama de um .md em janela própria */
+    getBlock: (i) => { const b = diagramBlocks()[i]; return b ? { code: b.code, lang: b.lang } : null; },
+    replaceBlock: (i, code) => { if (!replaceBlock(i, code)) toast(tr("Não foi possível atualizar o diagrama no arquivo.")); },
+    setLinked: (on) => { S.linked = !!on; S.quietBlocks = null; },
+    setBlockText: (text) => {             // o .md mudou (editado lá ou no disco)
+      if (!S.block || text === S.text || S.typing) return;
+      pushHistory(S.text);
+      S.text = text; S.blockSent = text;
+      syncEditor(); notifySource(); draw();
+    },
   };
   if (EDITOR_ONLY) {
     body.className = "editor-only editor-open mode-md";

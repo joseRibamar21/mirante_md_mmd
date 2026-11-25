@@ -215,6 +215,41 @@ kbd {
 .mermaid-block svg { max-width: 100%; height: auto; }
 .mermaid-block.mm-inline { padding: 0; overflow: hidden; }
 .mermaid-block.mm-inline > .mm-host { flex: none; }
+/* título de subgraph numa linha só: o Mermaid quebra em 200px mas reserva espaço para uma linha, e a
+ * segunda caía em cima dos nós. Vale também na medição (o Mermaid mede fora do .mermaid-host). */
+.cluster-label foreignObject > div { max-width: none !important; white-space: nowrap !important; }
+/* diagramas no .md: área que move e dá zoom (só visualização) + barrinha que aparece ao passar o mouse */
+.mermaid-block { position: relative; overflow: hidden; }
+.blk-view { position: relative; flex: 1 1 auto; min-width: 0; overflow: hidden; cursor: grab; touch-action: none; }
+.blk-view.dragging { cursor: grabbing; }
+.blk-pan { display: flex; justify-content: center; transform-origin: 0 0; }
+.blk-tools {
+  position: absolute; top: 8px; right: 8px; z-index: 2; display: flex; align-items: center; gap: 1px; padding: 3px;
+  border-radius: 12px; background: var(--glass-solid); border: 1px solid var(--sep); box-shadow: 0 4px 14px rgba(0,0,0,.14);
+  opacity: 0; transition: opacity .15s var(--ease);
+}
+.blk-tools .icon-btn { color: var(--fg2); }
+.blk-tools .icon-btn:hover { color: var(--accent); }
+.mermaid-block:hover .blk-tools, .blk-tools:focus-within { opacity: 1; }
+@media (hover: none) { .blk-tools { opacity: .9; } }
+.blk-sep { flex: none; width: 1px; height: 16px; margin: 0 3px; background: var(--sep); }
+
+/* tela cheia: o diagrama solto sobre fundo escuro, sem cartão */
+#blk-modal {
+  position: fixed; inset: 0; z-index: 45; background: rgba(5, 7, 14, .88);
+  -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); animation: bm-in .2s ease;
+}
+#blk-modal.closing { animation: bm-out .18s ease forwards; }
+@keyframes bm-in { from { opacity: 0; } }
+@keyframes bm-out { to { opacity: 0; } }
+body.fx-lite #blk-modal { -webkit-backdrop-filter: none; backdrop-filter: none; background: rgba(5, 7, 14, .9); }
+.bm-view { position: absolute; inset: 0; overflow: hidden; cursor: grab; touch-action: none; }
+.bm-view.dragging { cursor: grabbing; }
+.bm-pan { position: absolute; left: 0; top: 0; width: max-content; transform-origin: 0 0; }
+.bm-pan > svg { display: block; }
+.bm-bar { position: absolute; bottom: 22px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 2px; padding: 5px; }
+.bm-zoom { min-width: 46px; text-align: center; font: 500 12.5px var(--font); color: var(--fg2); font-variant-numeric: tabular-nums; }
+body.blk-modal-open #dock, body.blk-modal-open #dock-hint { opacity: 0 !important; pointer-events: none; }
 
 /* ---------- palco do diagrama ---------- */
 #stage { cursor: grab; touch-action: none; }
@@ -531,7 +566,7 @@ body.editor-open .zoom-label { display: none; }
 }
 
 @media print {
-  #backdrop, #dock, #popover, #editor, #resizer, #node-bar, #toast, #findbar, #scrim, #shortcuts, #loading { display: none !important; }
+  #backdrop, #dock, #popover, #editor, #resizer, #node-bar, #toast, #findbar, #scrim, #shortcuts, #loading, .blk-tools, #blk-modal { display: none !important; }
   html, body { overflow: visible; height: auto; background: #fff; }
   #shell, #view, #doc-scroll { position: static; height: auto; overflow: visible; display: block; padding: 0; }
   .markdown-body { box-shadow: none; border: none; max-width: none; padding: 0; background: #fff !important; }

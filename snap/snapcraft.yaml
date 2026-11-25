@@ -1,0 +1,73 @@
+name: mirante
+title: Mirante
+base: core24
+adopt-info: mirante
+summary: View and edit Markdown and Mermaid and Graphviz diagrams
+description: |
+  Mirante opens Markdown files (.md), Mermaid (.mmd) and Graphviz (.gv, .dot) diagrams and plain
+  text (.txt) with a clean look, and reloads them by itself when the file changes on disk.
+  The interface is in English and Portuguese.
+
+  - Markdown with tables, task lists, highlighted code and diagrams inside the text
+  - Editable mind maps: drag nodes, rename and reorganize them, with four layouts
+  - Code editor on the side, with the drawing updating as you type
+  - Light and dark themes, smooth zoom and export to SVG and PDF
+
+  O Mirante abre arquivos Markdown, diagramas Mermaid e Graphviz e texto simples, com um visual
+  limpo, e atualiza sozinho quando o arquivo muda no disco.
+license: MIT
+contact: https://github.com/joseRibamar21/mirante_md_mmd/issues
+issues: https://github.com/joseRibamar21/mirante_md_mmd/issues
+source-code: https://github.com/joseRibamar21/mirante_md_mmd
+website: https://github.com/joseRibamar21/mirante_md_mmd
+icon: src-tauri/icons/icon.png
+grade: stable
+confinement: strict
+platforms:
+  amd64:
+
+apps:
+  mirante:
+    command: usr/bin/mirante
+    desktop: usr/share/applications/io.github.mirante.Viewer.desktop
+    common-id: io.github.mirante.Viewer
+    extensions: [gnome]
+    plugs:
+      - home # abrir e salvar arquivos da pasta pessoal
+      - removable-media # pendrives e discos em /media
+      - network # imagens da internet dentro do Markdown
+      - cups # imprimir / salvar como PDF
+    slots:
+      - single-instance
+
+slots:
+  # o plugin de instância única registra este nome no D-Bus da sessão para que um segundo
+  # "mirante arquivo.md" mande o arquivo para a janela já aberta
+  single-instance:
+    interface: dbus
+    bus: session
+    name: io.github.mirante.Viewer.SingleInstance
+
+parts:
+  mirante:
+    plugin: nil
+    source: .
+    build-snaps:
+      - node/22/stable
+      - rustup
+    build-packages:
+      - dpkg
+    parse-info: [usr/share/metainfo/io.github.mirante.Viewer.metainfo.xml]
+    override-pull: |
+      craftctl default
+      craftctl set version="$(sed -n 's/^version = "\(.*\)"/\1/p' src-tauri/Cargo.toml | head -1)"
+    override-build: |
+      rustup toolchain install stable --profile minimal
+      rustup default stable
+      npm ci
+      npx tauri build --bundles deb
+      dpkg-deb -x src-tauri/target/release/bundle/deb/*.deb "$CRAFT_PART_INSTALL"
+      # dentro do snap só vale um atalho, e o ícone precisa apontar para o arquivo
+      rm -f "$CRAFT_PART_INSTALL/usr/share/applications/Mirante.desktop"
+      sed -i 's|^Icon=.*|Icon=${SNAP}/usr/share/icons/hicolor/512x512/apps/mirante.png|' \
+        "$CRAFT_PART_INSTALL/usr/share/applications/io.github.mirante.Viewer.desktop"

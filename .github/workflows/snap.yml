@@ -1,0 +1,51 @@
+name: Snap
+
+# Gera o pacote snap (Snap Store / App Center do Ubuntu).
+# - push na main que mexe no snap: só gera e guarda o .snap nos Artifacts, para testar com
+#   `sudo snap install --dangerous ./mirante_*.snap`
+# - tag vX.Y.Z: gera, anexa à release e publica no canal stable da loja (precisa do segredo
+#   SNAPCRAFT_STORE_CREDENTIALS; sem ele, a publicação é pulada)
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+    paths: ["snap/**", ".github/workflows/snap.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  snap:
+    name: Gerar e publicar
+    runs-on: ubuntu-24.04
+    env:
+      SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: snapcore/action-build@v1
+        id: build
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: mirante-snap
+          path: ${{ steps.build.outputs.snap }}
+          if-no-files-found: error
+
+      - name: Anexar à release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp "${{ steps.build.outputs.snap }}" Mirante-linux-amd64.snap
+          # a release é criada pelo outro workflow; espera ela aparecer
+          for i in $(seq 30); do gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 && break; sleep 20; done
+          gh release upload "$GITHUB_REF_NAME" Mirante-linux-amd64.snap --clobber
+
+      - name: Publicar na Snap Store
+        if: startsWith(github.ref, 'refs/tags/v') && env.SNAPCRAFT_STORE_CREDENTIALS != ''
+        uses: snapcore/action-publish@v1
+        with:
+          snap: ${{ steps.build.outputs.snap }}
+          release: stable

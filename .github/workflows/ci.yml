@@ -139,6 +139,11 @@ jobs:
           Write-Host "Processos mirante: $count"
           Shot "2-markdown"
 
+          $img = python scripts/teste-imagens.py "$env:RUNNER_TEMP\img"
+          Start-Process $env:MIRANTE_EXE -ArgumentList "`"$img`""
+          Start-Sleep 10
+          Shot "3-imagens"
+
           if ($title -notlike '*mapa-mental.mmd*') { throw "título inesperado: '$title'" }
           if ($count -ne 1) { throw "instância única falhou: $count processos" }
 
@@ -222,6 +227,9 @@ jobs:
           n=$(pgrep -f 'Mirante.app/Contents/MacOS/' | wc -l | tr -d ' ')
           echo "Processos mirante: $n"
           [ "$n" = 1 ] || { echo "abriu mais de um processo"; exit 1; }
+          open -a /Applications/Mirante.app "$(python3 scripts/teste-imagens.py "$RUNNER_TEMP/img")"
+          sleep 10
+          screencapture -x shots/3-imagens.png || true
       - name: O Finder oferece o Mirante em "Abrir com" para cada extensão?
         if: always()
         run: |
@@ -281,6 +289,11 @@ jobs:
           sleep 15
           pgrep -x mirante || { echo "o Mirante fechou sozinho"; exit 1; }
           import -window root "shots/linux-${{ matrix.os }}.png"
+          # imagens no .md: relativa, absoluta, file://, HTML e da internet
+          pkill -x mirante; sleep 1
+          dbus-run-session -- mirante "$(python3 scripts/teste-imagens.py "$RUNNER_TEMP/img")" &
+          sleep 10
+          import -window root "shots/linux-${{ matrix.os }}-imagens.png"
       - uses: actions/upload-artifact@v7
         if: always()
         with:

@@ -53,6 +53,11 @@
   </provides>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="2.5.1" date="2026-11-26">
+      <description>
+        <p>Correção: imagens do Markdown com caminho absoluto (/home/..., C:\..., file://) voltam a aparecer.</p>
+      </description>
+    </release>
     <release version="2.5.0" date="2026-11-26">
       <description>
         <p>Versão para macOS (Apple Silicon e Intel), com os menus do Mac e os arquivos .md, .mmd e .gv abrindo

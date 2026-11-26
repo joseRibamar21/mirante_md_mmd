@@ -219,6 +219,30 @@
     if (!b) { b = document.createElement("base"); document.head.prepend(b); }
     b.href = href || APP_BASE;
   }
+  /* Caminhos absolutos do disco (/home/..., C:\..., file:///...) não resolvem pela <base> do protocolo asset
+     (o Tauri tira a primeira barra) e o DOMPurify descarta file:. Viram uma URL asset completa, como as relativas. */
+  function localUrl(raw) {
+    const m = /^(asset:\/\/localhost\/|https?:\/\/asset\.localhost\/)/.exec(document.baseURI);
+    if (!m || !raw) return null;
+    let p = raw.trim(), frag = "";
+    if (/^file:\/\//i.test(p)) {
+      try { const u = new URL(p); p = u.pathname; frag = u.hash; } catch { return null; }
+      if (/^\/[A-Za-z]:\//.test(p)) p = p.slice(1);
+    } else if (/^[A-Za-z]:[\\/]/.test(p) || (p[0] === "/" && p[1] !== "/")) {
+      const h = p.indexOf("#");
+      if (h > 0) { frag = p.slice(h); p = p.slice(0, h); }
+    } else return null;
+    try { p = decodeURIComponent(p); } catch { /* já estava sem codificação */ }
+    p = p.replace(/\\/g, "/");
+    const enc = (s) => s.split("/").map(encodeURIComponent).join("/");
+    return m[1] + (p[0] === "/" ? "%2F" + enc(p.slice(1)) : enc(p)) + frag;
+  }
+  DOMPurify.addHook("uponSanitizeAttribute", (node, data) => {
+    if (!/^(src|href)$/.test(data.attrName) || !/^(IMG|A|SOURCE|VIDEO|AUDIO)$/.test(node.nodeName)) return;
+    const url = localUrl(data.attrValue);
+    // com forceKeepAttr o DOMPurify deixa o atributo como está no nó (não reaplica attrValue)
+    if (url) { node.setAttribute(data.attrName, url); data.forceKeepAttr = true; }
+  });
   function setMode(kind) {
     body.classList.remove("mode-boot", "mode-welcome", "mode-md", "mode-mmd", "mode-txt");
     body.classList.add("mode-" + (kind || "welcome"));

@@ -30,7 +30,7 @@
   "screenshot": "https://joseribamar21.github.io/mirante_md_mmd/capturas/editor.png",
   "operatingSystem": "Windows 10, Windows 11, Ubuntu, Debian",
   "applicationCategory": "DeveloperApplication",
-  "softwareVersion": "2.3.0",
+  "softwareVersion": "2.4.0",
   "downloadUrl": "https://github.com/joseRibamar21/mirante_md_mmd/releases/latest",
   "license": "https://opensource.org/licenses/MIT",
   "isAccessibleForFree": true,
@@ -214,6 +214,16 @@
   .other { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 30px; }
   .copied { color: var(--accent) !important; }
 
+  .ai-card { display: flex; flex-direction: column; }
+  .ai-card p { flex: 1; }
+  .ai-card .btn { margin-top: 18px; height: 42px; font-size: 14.5px; justify-content: center; }
+  .ai-card .btn.copied { color: #fff !important; background: linear-gradient(135deg, #2da44e, #23863e); }
+  .ai-guide { display: flex; align-items: center; gap: 20px; margin-top: 18px; }
+  .ai-guide > div:first-child { flex: 1; }
+  .ai-guide h3 { font-size: 17.5px; }
+  .ai-guide p { margin-top: 6px; color: var(--fg2); font-size: 15px; }
+  .ai-guide .btn { height: 44px; font-size: 15px; }
+  @media (max-width: 700px) { .ai-guide { flex-direction: column; align-items: stretch; } .ai-guide .btn { justify-content: center; } }
   footer { padding: 40px 0 56px; color: var(--fg3); font-size: 14px; border-top: 1px solid var(--line); }
   footer .wrap { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; justify-content: space-between; }
   footer a { color: var(--fg2); }
@@ -230,6 +240,7 @@
     <a class="brand" href="#"><img src="../assets/icon.png" alt="" width="30" height="30">Mirante</a>
     <nav class="links">
       <a href="#recursos"><span lang="pt">Recursos</span><span lang="en">Features</span></a>
+      <a href="#ia"><span lang="pt">Com IA</span><span lang="en">With AI</span></a>
       <a href="#baixar"><span lang="pt">Baixar</span><span lang="en">Download</span></a>
       <a href="#apoiar"><span lang="pt">Apoiar</span><span lang="en">Support</span></a>
     </nav>
@@ -246,9 +257,9 @@
 <main>
   <div class="hero">
     <div class="wrap">
-      <a class="badge" href="#recursos" id="ver-badge">
-        <span lang="pt">Novo na <span class="ver">2.3</span>: diagramas com zoom e tela cheia</span>
-        <span lang="en">New in <span class="ver">2.3</span>: diagrams with zoom and full screen</span>
+      <a class="badge" href="#ia" id="ver-badge">
+        <span lang="pt">Novo na <span class="ver">2.4</span>: fórmulas, modo revisão e prompts para IA</span>
+        <span lang="en">New in <span class="ver">2.4</span>: formulas, review mode and AI prompts</span>
         <span aria-hidden="true">→</span>
       </a>
       <h1>
@@ -293,7 +304,7 @@
         <div class="card feat reveal">
           <div class="ic"><svg class="i" viewBox="0 0 24 24"><path d="M14 3.5H7.5A1.5 1.5 0 006 5v14a1.5 1.5 0 001.5 1.5h9A1.5 1.5 0 0018 19V7.5z"/><path d="M14 3.5v4h4M9 12.5h6M9 16h4"/></svg></div>
           <h3><span lang="pt">Markdown completo</span><span lang="en">Full Markdown</span></h3>
-          <p><span lang="pt">Tabelas, listas de tarefas, código com destaque, citações e diagramas Mermaid e Graphviz no meio do texto.</span><span lang="en">Tables, task lists, highlighted code, quotes and Mermaid and Graphviz diagrams inside the text.</span></p>
+          <p><span lang="pt">Tabelas, listas de tarefas, código com destaque e diagramas Mermaid e Graphviz no meio do texto, com zoom e tela cheia.</span><span lang="en">Tables, task lists, highlighted code and Mermaid and Graphviz diagrams inside the text, with zoom and full screen.</span></p>
         </div>
         <div class="card feat reveal">
           <div class="ic"><svg class="i" viewBox="0 0 24 24"><rect x="8.5" y="10" width="7" height="4" rx="2"/><path d="M8.5 12c-2 0-2-5-4.5-5M8.5 12c-2 0-2 5-4.5 5M15.5 12c2 0 2-5 4.5-5M15.5 12c2 0 2 5 4.5 5"/></svg></div>
@@ -306,9 +317,9 @@
           <p><span lang="pt">O código ao lado ou em outra janela, com o desenho mudando enquanto você digita.</span><span lang="en">Code on the side or in its own window, with the drawing changing as you type.</span></p>
         </div>
         <div class="card feat reveal">
-          <div class="ic"><svg class="i" viewBox="0 0 24 24"><path d="M14 4h6v6M10 20H4v-6M20 4l-6.5 6.5M4 20l6.5-6.5"/></svg></div>
-          <h3><span lang="pt">Diagramas em tela cheia</span><span lang="en">Full-screen diagrams</span><span class="new">2.3</span></h3>
-          <p><span lang="pt">Zoom, arrastar e expandir qualquer diagrama do Markdown, ou abri-lo numa janela só dele, ligada ao arquivo.</span><span lang="en">Zoom, drag and expand any diagram in your Markdown, or open it in its own window, linked to the file.</span></p>
+          <div class="ic"><svg class="i" viewBox="0 0 24 24"><path d="M4 6.5L12 3l8 3.5-8 3.5z"/><path d="M7 8v5c0 1.5 2.2 3 5 3s5-1.5 5-3V8M20 6.5V12"/></svg></div>
+          <h3><span lang="pt">Feito para estudar</span><span lang="en">Made for studying</span><span class="new">2.4</span></h3>
+          <p><span lang="pt">Fórmulas de matemática e química, caixas de destaque, perguntas com resposta escondida, modo revisão e um mapa mental gerado pelos títulos.</span><span lang="en">Math and chemistry formulas, callout boxes, questions with hidden answers, review mode and a mind map built from the headings.</span></p>
         </div>
         <div class="card feat reveal">
           <div class="ic"><svg class="i" viewBox="0 0 24 24"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="8" r="2.5"/><circle cx="9" cy="18" r="2.5"/><path d="M8.3 7.2l7.4 1M7 8.4l1.5 7.2M16.4 10l-5.6 6.4"/></svg></div>
@@ -335,7 +346,27 @@
     </div>
   </section>
 
-  <section id="baixar" class="alt">
+  <section id="ia" class="alt">
+    <div class="wrap">
+      <div class="sec-head reveal">
+        <div class="eyebrow"><span lang="pt">Com IA</span><span lang="en">With AI</span></div>
+        <h2><span lang="pt">Peça ao Claude, abra no Mirante</span><span lang="en">Ask Claude, open in Mirante</span></h2>
+        <p><span lang="pt">Copie um prompt, cole no Claude, ChatGPT ou Gemini com o seu conteúdo e receba um material pronto para estudar: tópicos, fórmulas, diagramas e perguntas com resposta escondida.</span><span lang="en">Copy a prompt, paste it into Claude, ChatGPT or Gemini with your content and get material ready to study: topics, formulas, diagrams and questions with hidden answers.</span></p>
+      </div>
+      <div class="grid" id="ai-cards"></div>
+      <div class="ai-guide card reveal">
+        <div>
+          <h3><span lang="pt">Guia de formato completo</span><span lang="en">Full format guide</span></h3>
+          <p><span lang="pt">Cole nas instruções de um Projeto do Claude ou nas instruções personalizadas do ChatGPT e todo material já sai pronto para o Mirante, com o que ele desenha e os limites.</span><span lang="en">Paste it into a Claude Project's instructions or ChatGPT's custom instructions and every answer comes out ready for Mirante, with what it renders and its limits.</span></p>
+        </div>
+        <div class="ai-guide-btns">
+          <a class="btn ghost" href="../ia/guia.md" lang="pt">Ver o guia</a><a class="btn ghost" href="../ia/guide.md" lang="en">View the guide</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="baixar">
     <div class="wrap">
       <div class="sec-head reveal">
         <div class="eyebrow"><span lang="pt">Baixar</span><span lang="en">Download</span></div>
@@ -400,7 +431,7 @@
 <footer>
   <div class="wrap">
     <div>© 2026 José Ribamar · <span lang="pt">Licença</span><span lang="en">License</span> <a href="https://github.com/joseRibamar21/mirante_md_mmd/blob/main/LICENSE">MIT</a></div>
-    <div><a href="https://github.com/joseRibamar21/mirante_md_mmd">GitHub</a> · <a href="https://github.com/joseRibamar21/mirante_md_mmd/releases">Releases</a></div>
+    <div><a href="https://github.com/joseRibamar21/mirante_md_mmd">GitHub</a> · <a href="https://github.com/joseRibamar21/mirante_md_mmd/releases">Releases</a> · <a href="../privacidade.html"><span lang="pt">Privacidade</span><span lang="en">Privacy</span></a></div>
   </div>
 </footer>
 
@@ -437,7 +468,11 @@
       const ta = document.createElement("textarea"); ta.value = text; document.body.appendChild(ta); ta.select();
       try { document.execCommand("copy"); } catch (_) {} ta.remove();
     }
-    if (el) { el.classList.add("copied"); setTimeout(() => el.classList.remove("copied"), 1400); }
+    if (el) {
+      el.classList.add("copied");
+      if (el.classList.contains("ai-copy")) { const was = el.textContent; el.textContent = t("Copiado!", "Copied!"); setTimeout(() => (el.textContent = was), 1400); }
+      setTimeout(() => el.classList.remove("copied"), 1400);
+    }
   }
   document.addEventListener("click", (e) => {
     const b = e.target.closest("[data-copy]");
@@ -448,6 +483,25 @@
     if (navigator.share) navigator.share(data).catch(() => {});
     else copy(data.url, e.currentTarget);
   });
+
+  /* ---------- prompts para IA (docs/ia/prompts.json, os mesmos do app) ---------- */
+  const AI_ICON = {
+    doc: '<path d="M14 3.5H7.5A1.5 1.5 0 006 5v14a1.5 1.5 0 001.5 1.5h9A1.5 1.5 0 0018 19V7.5z"/><path d="M14 3.5v4h4M9 12.5h6M9 16h4"/>',
+    question: '<circle cx="12" cy="12" r="8.5"/><path d="M9.6 9.3a2.5 2.5 0 014.8.9c0 1.7-2.4 2.3-2.4 3.6M12 16.8h.01"/>',
+    both: '<rect x="8.5" y="10" width="7" height="4" rx="2"/><path d="M8.5 12c-2 0-2-5-4.5-5M8.5 12c-2 0-2 5-4.5 5M15.5 12c2 0 2-5 4.5-5M15.5 12c2 0 2 5 4.5 5"/>',
+  };
+  let PROMPTS = null;
+  function renderPrompts() {
+    const box = document.getElementById("ai-cards");
+    if (!PROMPTS) return;
+    const L = root.dataset.lang === "pt" ? "pt" : "en";
+    box.innerHTML = PROMPTS.map((p) => `<div class="card feat ai-card reveal in">
+      <div class="ic"><svg class="i" viewBox="0 0 24 24">${AI_ICON[p.icon] || AI_ICON.doc}</svg></div>
+      <h3>${p.title[L]}</h3><p>${p.desc[L]}</p>
+      <button class="btn primary ai-copy" type="button" data-copy="">${t("Copiar prompt", "Copy prompt")}</button></div>`).join("");
+    box.querySelectorAll(".ai-copy").forEach((b, i) => (b.dataset.copy = PROMPTS[i].text[L]));
+  }
+  fetch(new URL("../ia/prompts.json", document.baseURI)).then((r) => r.json()).then((j) => { PROMPTS = j.prompts; renderPrompts(); }).catch(() => {});
 
   /* ---------- doações ---------- */
   const D = window.MIRANTE_DOAR || {};

@@ -65,6 +65,17 @@ jobs:
           Copy-Item (Get-ChildItem src-tauri/target/release/bundle/nsis/*-setup.exe)[0] out/Mirante-windows-x64-setup.exe
           Copy-Item (Get-ChildItem src-tauri/target/release/bundle/msi/*.msi)[0] out/Mirante-windows-x64.msi
 
+      # pacote da Microsoft Store: só sai quando a identidade do Partner Center estiver nas variáveis do
+      # repositório (Settings → Secrets and variables → Actions → Variables)
+      - name: Pacote MSIX (Microsoft Store)
+        if: runner.os == 'Windows' && vars.MSSTORE_IDENTITY_NAME != ''
+        shell: pwsh
+        env:
+          MSIX_IDENTITY_NAME: ${{ vars.MSSTORE_IDENTITY_NAME }}
+          MSIX_PUBLISHER: ${{ vars.MSSTORE_PUBLISHER }}
+          MSIX_PUBLISHER_DISPLAY_NAME: ${{ vars.MSSTORE_PUBLISHER_DISPLAY_NAME }}
+        run: pwsh packaging/msix/build-msix.ps1 -Out out/Mirante-windows-x64.msix
+
       - uses: actions/upload-artifact@v7
         with:
           name: release-${{ matrix.name }}
@@ -97,3 +108,24 @@ jobs:
             No Windows o instalador registra o Mirante para abrir `.md`, `.mmd`, `.gv` e `.txt`. Se o SmartScreen avisar
             que o app é de um editor desconhecido, clique em **Mais informações → Executar assim mesmo**
             (o instalador ainda não tem assinatura digital).
+
+  # manda a versão nova para o winget (abre um PR no microsoft/winget-pkgs). Precisa do segredo
+  # WINGET_TOKEN: um token clássico com o escopo public_repo. Sem ele, o passo é pulado.
+  winget:
+    name: Atualizar o winget
+    needs: publish
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Conferir o token
+        id: token
+        env:
+          WINGET_TOKEN: ${{ secrets.WINGET_TOKEN }}
+        run: |
+          if [ -n "$WINGET_TOKEN" ]; then echo "ok=true" >> "$GITHUB_OUTPUT"; else echo "::notice::sem WINGET_TOKEN: winget não atualizado"; fi
+      - uses: vedantmgoyal9/winget-releaser@v2
+        if: steps.token.outputs.ok == 'true'
+        with:
+          identifier: JoseRibamar.Mirante
+          installers-regex: '-setup\.exe$'
+          release-tag: ${{ github.ref_name }}
+          token: ${{ secrets.WINGET_TOKEN }}

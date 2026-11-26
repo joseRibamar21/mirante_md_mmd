@@ -55,6 +55,8 @@ def main() -> int:
         html = html.replace(old, new)
     # arquivos da pasta docs/ ficam um nível acima
     html = re.sub(r'\b(href|src|poster)="(assets|capturas|loja)/', r'\1="../\2/', html)
+    html = html.replace('href="privacidade.html"', 'href="../privacidade.html"')
+    html = html.replace('href="ia/', 'href="../ia/').replace('"ia/prompts.json"', '"../ia/prompts.json"')
     html = re.sub(r'url\("(assets|capturas|loja)/', r'url("../\1/', html)  # fontes no CSS
     aviso = "<!-- Gerado por scripts/gerar-site-en.py a partir de docs/index.html: edite lá e rode o script. -->\n"
     out = DOCS / "en" / "index.html"

@@ -47,6 +47,16 @@
    * injeta MIRANTE_LANG antes do HTML; fora dele vale o idioma do navegador. */
   const EN = {
     "Código": "Code", "Texto": "Text", "Editor de código": "Code editor", "Abrir em janela separada": "Open in a separate window", "Abrir em nova janela": "Open in a new window", "Expandir": "Expand",
+    "Mostrar todas as respostas": "Show all answers", "Esconder todas as respostas": "Hide all answers",
+    "Mapa mental dos títulos": "Headings mind map", "Gerar material com IA": "Generate material with AI",
+    "Gerar material de estudo com IA": "Generate study material with AI", "Copiar prompt": "Copy prompt", "Copiado": "Copied",
+    "Copie um prompt, cole no Claude, ChatGPT ou Gemini junto com o seu conteúdo (texto, PDF ou só o assunto) e abra aqui o arquivo que ele devolver.":
+      "Copy a prompt, paste it into Claude, ChatGPT or Gemini along with your content (text, PDF or just the topic) and open the file it returns here.",
+    "Guia de formato completo": "Full format guide", "Copiar guia": "Copy guide", "Ver no site": "View on the website",
+    "Para colar nas instruções de um Projeto do Claude ou nas instruções personalizadas do ChatGPT: tudo o que o Mirante desenha e os limites. Assim todo material já sai pronto.":
+      "To paste into a Claude Project's instructions or ChatGPT's custom instructions: everything Mirante renders and its limits, so every answer comes out ready.", "Nota": "Note", "Dica": "Tip", "Importante": "Important",
+    "Atenção": "Warning", "Cuidado": "Caution", "Exemplo": "Example", "Pergunta": "Question", "Resumo": "Summary",
+    "Certo": "Success", "Citação": "Quote", "Clique num tópico para ir até ele": "Click a topic to jump to it", "Documento": "Document",
     "Afastar": "Zoom out", "Aproximar": "Zoom in", "Mover para a esquerda": "Move left", "Mover para a direita": "Move right",
     "Voltar ao tamanho original": "Reset view", "Fechar (Esc)": "Close (Esc)",
     "Não foi possível atualizar o diagrama no arquivo.": "Could not update the diagram in the file.",
@@ -139,8 +149,12 @@
     external: '<path d="M14 4h6v6M20 4l-8.5 8.5"/><path d="M18 14v4.5a1.5 1.5 0 01-1.5 1.5h-11A1.5 1.5 0 014 18.5v-11A1.5 1.5 0 015.5 6H10"/>',
     attach: '<rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M9.5 4v16"/>',
     expand: '<path d="M14 4h6v6M10 20H4v-6M20 4l-6.5 6.5M4 20l6.5-6.5"/>',
+    eye: '<path d="M2.5 12s3.5-6.5 9.5-6.5 9.5 6.5 9.5 6.5-3.5 6.5-9.5 6.5S2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/>',
+    eyeOff: '<path d="M3.5 3.5l17 17M10.4 5.7A9.6 9.6 0 0112 5.5c6 0 9.5 6.5 9.5 6.5a16.6 16.6 0 01-3 3.8M6.7 6.8A16.3 16.3 0 002.5 12s3.5 6.5 9.5 6.5a9.3 9.3 0 004.3-1.1M9.9 9.9a3 3 0 004.2 4.2"/>',
     reset: '<path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v4.5h4.5"/>',
     doc: '<path d="M14 3.5H7.5A1.5 1.5 0 006 5v14a1.5 1.5 0 001.5 1.5h9A1.5 1.5 0 0018 19V7.5z"/><path d="M14 3.5v4h4M9 12.5h6M9 16h4"/>',
+    copy: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5.5A1.5 1.5 0 0014.5 4h-9A1.5 1.5 0 004 5.5v9A1.5 1.5 0 005.5 16H8"/>',
+    question: '<circle cx="12" cy="12" r="8.5"/><path d="M9.6 9.3a2.5 2.5 0 014.8.9c0 1.7-2.4 2.3-2.4 3.6M12 16.8h.01"/>',
   };
   const icon = (n) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${P[n]}</svg>`;
   document.querySelector('#editor [data-cmd="toggleEditor"]').innerHTML = icon("close");
@@ -239,6 +253,7 @@
         const lang = (token.lang || "").trim().split(/\s+/)[0].toLowerCase();
         if (lang === "mermaid" || lang === "mmd") return `<div class="mermaid-block" data-mermaid="${encodeURIComponent(token.text)}"></div>`;
         if (lang === "dot" || lang === "graphviz" || lang === "gv") return `<div class="mermaid-block" data-dot="${encodeURIComponent(token.text)}"></div>`;
+        if (lang === "math") return `<div class="math-block" data-tex="${escapeHtml(token.text)}"></div>`;
         let html;
         try {
           html = lang && hljs.getLanguage(lang) ? hljs.highlight(token.text, { language: lang, ignoreIllegals: true }).value : escapeHtml(token.text);
@@ -246,6 +261,38 @@
         return `<pre><code class="hljs${lang ? " language-" + escapeHtml(lang) : ""}">${html}</code></pre>`;
       },
     },
+  });
+  /* fórmulas: $...$ no texto, $$...$$ em bloco e blocos ```math; quem desenha é o KaTeX, carregado só
+   * quando o documento tem fórmula. "$5 e $10" continua texto: o $ de abertura precisa de algo colado
+   * depois, o de fechamento de algo colado antes, e não pode vir seguido de número. */
+  marked.use({
+    extensions: [
+      {
+        name: "mathBlock", level: "block",
+        start(src) { const i = src.search(/^ {0,3}(\$\$|\\\[)/m); return i < 0 ? undefined : i; },
+        tokenizer(src) {
+          // $$ ... $$ e também \[ ... \] (o jeito do ChatGPT e de muitas IAs)
+          const m = /^ {0,3}\$\$([\s\S]+?)\$\$[ \t]*(?:\n|$)/.exec(src) || /^ {0,3}\\\[([\s\S]+?)\\\][ \t]*(?:\n|$)/.exec(src);
+          if (m) return { type: "mathBlock", raw: m[0], text: m[1].trim() };
+        },
+        renderer: (t) => `<div class="math-block" data-tex="${escapeHtml(t.text)}"></div>\n`,
+      },
+      {
+        name: "mathInline", level: "inline",
+        start(src) { const i = src.search(/\$|\\[([]/); return i < 0 ? undefined : i; },
+        tokenizer(src) {
+          let m = /^\\\((.+?)\\\)/.exec(src);                 // \( ... \)
+          if (m) return { type: "mathInline", raw: m[0], text: m[1].trim(), display: false };
+          m = /^\\\[([\s\S]+?)\\\]/.exec(src);              // \[ ... \] no meio de um parágrafo
+          if (m) return { type: "mathInline", raw: m[0], text: m[1].trim(), display: true };
+          m = /^\$\$([^$]+?)\$\$/.exec(src);
+          if (m) return { type: "mathInline", raw: m[0], text: m[1].trim(), display: true };
+          m = /^\$(?!\s)((?:\\.|[^\\$\n])+?)(?<!\s)\$(?!\d)/.exec(src);
+          if (m) return { type: "mathInline", raw: m[0], text: m[1], display: false };
+        },
+        renderer: (t) => `<span class="math-inline${t.display ? " display" : ""}" data-tex="${escapeHtml(t.text)}"></span>`,
+      },
+    ],
   });
   const slugify = (t) => t.trim().toLowerCase().replace(/[^\p{L}\p{N}\s_-]/gu, "").replace(/\s/g, "-");
   function addHeadingIds(root) {
@@ -363,7 +410,7 @@
     let drag = null;
     view.addEventListener("pointerdown", (e) => {
       if (e.button !== 0 || e.target.closest("button")) return;
-      drag = { id: e.pointerId, x: e.clientX, y: e.clientY, sx: st.x, sy: st.y };
+      drag = { id: e.pointerId, x: e.clientX, y: e.clientY, sx: st.x, sy: st.y, target: e.target };
       view.setPointerCapture(e.pointerId);
       view.classList.add("dragging");
       e.preventDefault();
@@ -373,7 +420,11 @@
       st.x = drag.sx + e.clientX - drag.x; st.y = drag.sy + e.clientY - drag.y;
       apply(false);
     });
-    const end = () => { drag = null; view.classList.remove("dragging"); };
+    const end = (e) => {
+      // soltar sem ter arrastado é um clique (com a captura do ponteiro, o click iria para a área toda)
+      if (drag && o.onTap && e.type === "pointerup" && Math.hypot(e.clientX - drag.x, e.clientY - drag.y) < 5) o.onTap(drag.target);
+      drag = null; view.classList.remove("dragging");
+    };
     view.addEventListener("pointerup", end);
     view.addEventListener("pointercancel", end);
     view.addEventListener("wheel", (e) => {
@@ -423,32 +474,38 @@
   /* tela cheia: o diagrama solto sobre um fundo escuro, sem cartão */
   let modal = null;
   function openBlockModal(srcPan) {
+    openModal((pan) => {
+      for (const n of srcPan.childNodes) pan.appendChild(n.cloneNode(true));
+      // tamanho natural: o SVG do Mermaid vem com largura 100%; o mapa mental vem reduzido para caber no texto
+      const svg = pan.querySelector(":scope > svg");
+      if (svg && svg.viewBox && svg.viewBox.baseVal && svg.viewBox.baseVal.width) {
+        const vb = svg.viewBox.baseVal;
+        svg.setAttribute("width", vb.width); svg.setAttribute("height", vb.height);
+        svg.style.maxWidth = "none";
+      }
+      const host = pan.querySelector(".mm-host");
+      if (host) {
+        host.style.transform = "none";
+        const box = host.parentElement;
+        if (box !== pan) { box.style.width = "auto"; box.style.height = "auto"; box.style.overflow = "visible"; }
+      }
+    });
+  }
+  /* tela cheia genérica: fill(pan) põe o conteúdo; opts.onTap recebe o elemento clicado; opts.hint é a dica no topo */
+  function openModal(fill, opts = {}) {
     closeBlockModal(true);
     const m = document.createElement("div");
     m.id = "blk-modal";
-    m.innerHTML = `<div class="bm-view"><div class="bm-pan"></div></div>
+    m.innerHTML = `<div class="bm-view"><div class="bm-pan"></div></div>${opts.hint ? `<div class="bm-hint glass-pill">${escapeHtml(opts.hint)}</div>` : ""}
       <div class="bm-bar glass-pill">${toolBtn("out", "minus", "Afastar")}<span class="bm-zoom">100%</span>${toolBtn("in", "plus", "Aproximar")}
       <span class="blk-sep"></span>${toolBtn("left", "aLeft", "Mover para a esquerda")}${toolBtn("right", "aRight", "Mover para a direita")}
       ${toolBtn("fit", "fit", "Ajustar à janela")}<span class="blk-sep"></span>${toolBtn("close", "close", "Fechar (Esc)")}</div>`;
     const view = m.querySelector(".bm-view"), pan = m.querySelector(".bm-pan");
-    for (const n of srcPan.childNodes) pan.appendChild(n.cloneNode(true));
-    // tamanho natural: o SVG do Mermaid vem com largura 100%; o mapa mental vem reduzido para caber no texto
-    const svg = pan.querySelector(":scope > svg");
-    if (svg && svg.viewBox && svg.viewBox.baseVal && svg.viewBox.baseVal.width) {
-      const vb = svg.viewBox.baseVal;
-      svg.setAttribute("width", vb.width); svg.setAttribute("height", vb.height);
-      svg.style.maxWidth = "none";
-    }
-    const host = pan.querySelector(".mm-host");
-    if (host) {
-      host.style.transform = "none";
-      const box = host.parentElement;
-      if (box !== pan) { box.style.width = "auto"; box.style.height = "auto"; box.style.overflow = "visible"; }
-    }
-    body.appendChild(m);
+    body.appendChild(m);                       // no documento antes de desenhar: o conteúdo precisa ser medido
     body.classList.add("blk-modal-open");
+    fill(pan);
     const zl = m.querySelector(".bm-zoom");
-    const pz = panZoom(view, pan, { wheelZoom: true, min: 0.1, max: 8, onChange: (st) => (zl.textContent = Math.round(st.s * 100) + "%") });
+    const pz = panZoom(view, pan, { wheelZoom: true, min: 0.1, max: 8, onTap: opts.onTap, onChange: (st) => (zl.textContent = Math.round(st.s * 100) + "%") });
     const fitIt = (anim) => {
       const w = pan.offsetWidth, h = pan.offsetHeight, W = view.clientWidth, H = view.clientHeight - 90;
       const s2 = Math.min(2, (W * 0.92) / w, (H * 0.92) / h);
@@ -479,6 +536,50 @@
     addEventListener("resize", onResize);
     modal = { el: m, off: () => { document.removeEventListener("keydown", onKey, true); removeEventListener("resize", onResize); } };
   }
+  /* mapa mental dos títulos do .md: # ## ### #### viram a árvore; clicar num tópico leva até ele */
+  function headingsMap() {
+    const hs = [...E.doc.querySelectorAll("h1, h2, h3, h4")]
+      .map((el) => ({ level: +el.tagName[1], text: el.textContent.trim(), el })).filter((h) => h.text);
+    if (hs.length < 2) return null;
+    const oneTitle = hs[0].level === 1 && hs.filter((h) => h.level === 1).length === 1;
+    const name = (S.path || "").split(/[\\/]/).pop().replace(/\.[^.]+$/, "") || tr("Documento");
+    const rest = oneTitle ? hs.slice(1) : hs;
+    const q = (t) => '"' + t.replace(/"/g, "'").replace(/\s+/g, " ") + '"';
+    const lines = ["mindmap", `  root((${q(oneTitle ? hs[0].text : name)}))`], targets = [oneTitle ? hs[0].el : null];
+    const levels = [];
+    for (const h of rest) {
+      while (levels.length && levels[levels.length - 1] >= h.level) levels.pop();
+      levels.push(h.level);
+      lines.push("  ".repeat(levels.length + 1) + `n${targets.length}[${q(h.text)}]`);
+      targets.push(h.el);
+    }
+    return { text: lines.join("\n"), targets };
+  }
+  function openHeadingsMap() {
+    const map = headingsMap();
+    if (!map) return;
+    let els = null;
+    openModal((pan) => {
+      const host = document.createElement("div");
+      pan.appendChild(host);
+      const layout = ["both", "right", "down", "radial"].includes(S.prefs.layout) ? S.prefs.layout : "both";
+      els = MM.render(host, MM.parse(map.text), { ...S.prefs, layout, theme: S.theme }).els;
+    }, {
+      hint: tr("Clique num tópico para ir até ele"),
+      onTap: (t) => {
+        const node = t.closest && t.closest(".mm-node");
+        if (!node || !els) return;
+        const id = [...els].find(([, el]) => el === node || el.contains(node));
+        const target = id && map.targets[id[0]];
+        if (!target) return;
+        closeBlockModal();
+        const det = target.closest("details");
+        if (det && !det.open) det.open = true;
+        target.scrollIntoView({ behavior: calm() ? "auto" : "smooth", block: "start" });
+        target.classList.remove("flash"); void target.offsetWidth; target.classList.add("flash");
+      },
+    });
+  }
   function closeBlockModal(now) {
     if (!modal) return;
     const { el, off } = modal;
@@ -488,10 +589,127 @@
     el.classList.add("closing");
     setTimeout(() => el.remove(), 180);
   }
+  /* caixas de destaque (GitHub e Obsidian): > [!TIP] Título opcional. Com [!TIPO]- ela começa fechada e
+   * abre ao clicar (bom para perguntas); com [!TIPO]+ começa aberta. */
+  const CALLOUTS = {
+    note: ["note", "Nota"], info: ["note", "Nota"], tip: ["tip", "Dica"], hint: ["tip", "Dica"],
+    important: ["important", "Importante"], warning: ["warning", "Atenção"], attention: ["warning", "Atenção"],
+    caution: ["caution", "Cuidado"], danger: ["caution", "Cuidado"], error: ["caution", "Cuidado"],
+    example: ["example", "Exemplo"], question: ["question", "Pergunta"], faq: ["question", "Pergunta"],
+    summary: ["summary", "Resumo"], abstract: ["summary", "Resumo"], tldr: ["summary", "Resumo"],
+    success: ["tip", "Certo"], check: ["tip", "Certo"], quote: ["note", "Citação"],
+  };
+  const CALLOUT_ICON = {
+    note: '<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5M12 7.6h.01"/>',
+    tip: '<path d="M9 18h6M10 21h4M12 3a6 6 0 00-3.5 10.9c.6.4 1 1.1 1 1.9V16h5v-.2c0-.8.4-1.5 1-1.9A6 6 0 0012 3z"/>',
+    important: '<path d="M4.5 5.5h15v10h-7l-4 3.5v-3.5h-4z"/><path d="M12 8v3.5M12 13.6h.01"/>',
+    warning: '<path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17h.01"/>',
+    caution: '<path d="M8.3 3.5h7.4l5.3 5.3v7.4l-5.3 5.3H8.3L3 16.2V8.8z"/><path d="M12 8v4.5M12 15.6h.01"/>',
+    example: '<path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/>',
+    question: '<circle cx="12" cy="12" r="8.5"/><path d="M9.6 9.3a2.5 2.5 0 014.8.9c0 1.7-2.4 2.3-2.4 3.6M12 16.8h.01"/>',
+    summary: '<path d="M14 3.5H7.5A1.5 1.5 0 006 5v14a1.5 1.5 0 001.5 1.5h9A1.5 1.5 0 0018 19V7.5z"/><path d="M14 3.5v4h4M9 12.5h6M9 16h4"/>',
+  };
+  function applyCallouts(root) {
+    for (const bq of root.querySelectorAll("blockquote")) {
+      const p = bq.firstElementChild, t = p && p.tagName === "P" ? p.firstChild : null;
+      if (!t || t.nodeType !== 3) continue;
+      const m = /^\s*\[!([A-Za-z]+)\]([+-]?)[ \t]*([^\n]*)\n?/.exec(t.data);
+      if (!m) continue;
+      const [kind, label] = CALLOUTS[m[1].toLowerCase()] || ["note", m[1][0].toUpperCase() + m[1].slice(1).toLowerCase()];
+      t.data = t.data.slice(m[0].length);
+      // o título pode ter formatação depois do texto (ex.: **negrito**): leva tudo até a primeira quebra
+      const title = document.createElement("span");
+      title.className = "callout-label";
+      title.append(m[3]);
+      if (!m[0].endsWith("\n")) {           // o título continua em negrito, código ou fórmula até a quebra de linha
+        let n = t.nextSibling;
+        while (n && n.nodeName !== "BR" && !(n.nodeType === 3 && n.data.includes("\n"))) { const nx = n.nextSibling; title.appendChild(n); n = nx; }
+        if (n && n.nodeName === "BR") n.remove();
+        else if (n && n.nodeType === 3) { const i = n.data.indexOf("\n"); title.append(n.data.slice(0, i)); n.data = n.data.slice(i + 1); }
+      }
+      if (!title.textContent.trim() && !title.querySelector(".math-inline")) title.textContent = tr(label);
+      if (!p.textContent.trim() && !p.querySelector("img, .math-inline")) p.remove();
+      const fold = m[2];
+      const box = document.createElement(fold ? "details" : "div");
+      box.className = `callout callout-${kind}`;
+      if (fold === "+") box.open = true;
+      const head = document.createElement(fold ? "summary" : "div");
+      head.className = "callout-title";
+      head.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${CALLOUT_ICON[kind]}</svg>`;
+      head.appendChild(title);
+      const content = document.createElement("div");
+      content.className = "callout-body";
+      content.append(...bq.childNodes);
+      box.append(head, content);
+      bq.replaceWith(box);
+    }
+  }
+  let katexLoad = null;
+  function loadKatex() {
+    if (!document.querySelector("link[data-katex]")) {
+      const css = document.createElement("link");
+      css.rel = "stylesheet"; css.href = vendorUrl("katex/katex.min.css"); css.dataset.katex = "";
+      document.head.appendChild(css);
+    }
+    if (window.katex) return Promise.resolve(window.katex);
+    return (katexLoad ||= new Promise((ok, fail) => {
+      const sc = document.createElement("script");
+      sc.src = vendorUrl("katex/katex.min.js");
+      sc.onload = () => {                     // química (\ce, \pu): extensão do próprio KaTeX
+        const ch = document.createElement("script");
+        ch.src = vendorUrl("katex/mhchem.min.js");
+        ch.onload = ch.onerror = () => ok(window.katex);
+        document.head.appendChild(ch);
+      };
+      sc.onerror = () => { katexLoad = null; fail(new Error("KaTeX")); };
+      document.head.appendChild(sc);
+    }));
+  }
+  async function renderMath(root, my) {
+    const els = root.querySelectorAll("[data-tex]");
+    if (!els.length) return;
+    let katex;
+    try { katex = await loadKatex(); } catch (_) { return; }   // sem KaTeX, fica o código da fórmula
+    if (my !== S.seq) return;
+    for (const el of els) {
+      const display = el.classList.contains("math-block") || el.classList.contains("display");
+      try {
+        katex.render(el.dataset.tex, el, { displayMode: display, throwOnError: false, strict: "ignore", trust: false });
+      } catch (_) {
+        el.textContent = el.dataset.tex; el.classList.add("math-error");
+      }
+    }
+  }
+  /* modo revisão: respostas em <details>; o botão da barra abre todas ou fecha todas */
+  const allAnswersOpen = () => !E.doc.querySelector("details:not([open])");
+  const answersBtn = () => allAnswersOpen()
+    ? btn("answers", "eyeOff", "Esconder todas as respostas", true)
+    : btn("answers", "eye", "Mostrar todas as respostas");
+  function toggleAnswers() {
+    const open = !allAnswersOpen();
+    for (const d of E.doc.querySelectorAll("details")) d.open = open;
+  }
+  let answersT = 0;
+  E.doc.addEventListener("toggle", (e) => {
+    // um <details> que abre mostra mapas mentais que não tinham largura para se encaixar
+    if (e.target.open) for (const el of e.target.querySelectorAll(".mm-inline")) if (el._fit && el._fit()) el._fit = null;
+    cancelAnimationFrame(answersT);              // abrir todas dispara um toggle por resposta: troca o ícone uma vez
+    answersT = requestAnimationFrame(() => {
+      const b = E.dock.querySelector('[data-cmd="answers"]');
+      if (b) b.outerHTML = answersBtn();
+    });
+  }, true);
   async function renderMarkdown(my) {
     const raw = marked.parse(S.text.replace(FRONT_MATTER, ""));
-    E.doc.innerHTML = DOMPurify.sanitize(raw, { ADD_ATTR: ["data-mermaid", "data-dot", "target"] });
+    // redesenhar (tema, digitação, arquivo salvo) não fecha as respostas que a pessoa abriu
+    const openAnswers = S.answersFor === S.path ? [...E.doc.querySelectorAll("details")].map((d) => d.open) : [];
+    S.answersFor = S.path;
+    E.doc.innerHTML = DOMPurify.sanitize(raw, { ADD_ATTR: ["data-mermaid", "data-dot", "data-tex", "target"] });
+    applyCallouts(E.doc);
+    E.doc.querySelectorAll("details").forEach((d, i) => { if (openAnswers[i]) d.open = true; });
     addHeadingIds(E.doc);
+    await renderMath(E.doc, my);
+    if (my !== S.seq) return;
     const blockEls = [...E.doc.querySelectorAll(".mermaid-block")];
     for (const [i, el] of blockEls.entries()) {
       if (el.dataset.dot != null) {
@@ -504,15 +722,28 @@
       const code = decodeURIComponent(el.dataset.mermaid || "");
       if (detectSub(code) === "mindmap" && S.prefs.layout !== "mermaid") {
         el.classList.add("mm-inline");
-        const host = document.createElement("div");
-        el.appendChild(host);
+        // desenha fora da tela mas dentro do documento: dentro de um <details> fechado o bloco não tem
+        // tamanho (no WebKit fica display:none) e os nós sairiam medidos com zero
+        const host = document.createElement("div"), stage = document.createElement("div");
+        stage.style.cssText = "position:absolute;left:-100000px;top:0;visibility:hidden";
+        stage.appendChild(host); E.doc.appendChild(stage);
         const r = MM.render(host, MM.parse(code), { ...S.prefs, theme: S.theme });
-        // encaixa na largura com scale() (vetorial; o CSS zoom esbarrava no limite de fonte do WebKit)
-        const s = Math.min(1, el.clientWidth / r.width);
+        stage.remove();
         const box = document.createElement("div");
-        box.style.cssText = `width:${Math.floor(r.width * s)}px;height:${Math.ceil(r.height * s)}px;margin:0 auto;overflow:hidden;flex:none`;
-        el.replaceChild(box, host); box.appendChild(host);
-        if (s < 0.999) { host.style.transform = `scale(${s})`; host.style.transformOrigin = "0 0"; }
+        box.appendChild(host); el.appendChild(box);
+        // encaixa na largura com scale() (vetorial; o CSS zoom esbarrava no limite de fonte do WebKit)
+        const fitInline = () => {
+          const w = el.clientWidth;
+          if (!w) return false;
+          const s = Math.min(1, w / r.width);
+          box.style.cssText = `width:${Math.floor(r.width * s)}px;height:${Math.ceil(r.height * s)}px;margin:0 auto;overflow:hidden;flex:none`;
+          host.style.transform = s < 0.999 ? `scale(${s})` : ""; host.style.transformOrigin = "0 0";
+          return true;
+        };
+        if (!fitInline()) {                  // escondido agora: encaixa quando o <details> abrir
+          box.style.cssText = `width:${Math.ceil(r.width)}px;height:${Math.ceil(r.height)}px;margin:0 auto;overflow:hidden;flex:none`;
+          el._fit = fitInline;
+        }
       } else {
         await mermaidInto(el, code, my);
       }
@@ -1328,6 +1559,11 @@
       `<button class="icon-btn zoom-label" data-cmd="zoomReset" title="${tr("Tamanho original (Ctrl 0)")}"></button>` +
       btn("zoomIn", "plus", "Aumentar (Ctrl +)");
     if (S.kind === "mmd") h += btn("fit", "fit", "Ajustar à janela");
+    if (S.kind === "md") {                     // estudo: mapa dos títulos e modo revisão, quando o texto tem
+      const study = (E.doc.querySelectorAll("h1, h2, h3, h4").length >= 2 ? btn("headingsMap", "both", "Mapa mental dos títulos") : "") +
+        (E.doc.querySelector("details") ? answersBtn() : "");
+      if (study) h += SEP + study;
+    }
     h += SEP;
     if (S.kind === "mmd" && S.parsed) h += btn("undo", "undo", "Desfazer (Ctrl Z)") + btn("redo", "redo", "Refazer (Ctrl Shift Z)");
     h += btn("theme", S.theme === "dark" ? "sun" : "moon", S.theme === "dark" ? "Tema claro (Ctrl D)" : "Tema escuro (Ctrl D)");
@@ -1366,6 +1602,8 @@
   const commands = {
     toggleEditor: () => (S.detached ? post({ type: "focusEditor" }) : toggleEditor()),
     spacing: () => (S.popover ? closePopover() : openPopover("spacing")),
+    answers: () => toggleAnswers(),
+    headingsMap: () => openHeadingsMap(),
     zoomIn: () => zoomBy(1), zoomOut: () => zoomBy(-1), zoomReset: () => zoomBy(0),
     fit: () => fit(true), undo: () => undo(), redo: () => redo(),
     theme: () => { const t = (S.themeNext || S.theme) === "dark" ? "light" : "dark"; setTheme(t); post({ type: "theme", value: t }); },
@@ -1538,6 +1776,7 @@
   document.addEventListener("keydown", (e) => {
     if (e.target === E.src || S.editing) return;
     if (e.key === "Escape" && !$("shortcuts").hidden) { closeShortcuts(); return; }
+    if (e.key === "Escape" && !$("ai-dialog").hidden) { closeAiPrompts(); return; }
     if (e.target.closest && e.target.closest("#popover, #findbar")) return;
     const mod = e.ctrlKey || e.metaKey;
     if (mod && (e.key === "z" || e.key === "Z")) { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
@@ -1709,8 +1948,55 @@
     box.hidden = false; $("scrim").hidden = false;
   }
   function closeShortcuts() { $("shortcuts").hidden = true; $("scrim").hidden = true; }
+
+  /* ---------------- gerar material com IA: prompts prontos e o guia de formato ----------------
+   * Os textos vêm de prompts.js (gerado de docs/ia/ por scripts/gerar-ia.py). */
+  const GUIDE_URL = { pt: "https://joseribamar21.github.io/mirante_md_mmd/ia/guia.md", en: "https://joseribamar21.github.io/mirante_md_mmd/ia/guide.md" };
+  async function copyText(text) {
+    try { await navigator.clipboard.writeText(text); return true; } catch (_) {
+      const ta = document.createElement("textarea");
+      ta.value = text; ta.style.cssText = "position:fixed;opacity:0"; document.body.appendChild(ta); ta.select();
+      let ok = false;
+      try { ok = document.execCommand("copy"); } catch (_) {}
+      ta.remove(); return ok;
+    }
+  }
+  function showAiPrompts() {
+    const P = window.MIRANTE_PROMPTS;
+    if (!P) return;
+    const L = LANG === "en" ? "en" : "pt", box = $("ai-dialog");
+    closeShortcuts();
+    box.innerHTML = `<header><h2>${tr("Gerar material com IA")}</h2><button class="icon-btn small" data-close title="${tr("Fechar (Esc)")}">${icon("close")}</button></header>
+      <p class="ai-intro">${tr("Copie um prompt, cole no Claude, ChatGPT ou Gemini junto com o seu conteúdo (texto, PDF ou só o assunto) e abra aqui o arquivo que ele devolver.")}</p>
+      <div class="ai-cards">${P.prompts.map((p, i) => `<article class="ai-card">
+        <div class="ai-card-ic">${icon(P_ICON[p.icon] || "doc")}</div>
+        <h3>${escapeHtml(p.title[L])}</h3><p>${escapeHtml(p.desc[L])}</p>
+        <button class="ai-copy" data-prompt="${i}">${icon("copy")}<span>${tr("Copiar prompt")}</span></button></article>`).join("")}</div>
+      <div class="ai-guide">
+        <div><h3>${tr("Guia de formato completo")}</h3><p>${tr("Para colar nas instruções de um Projeto do Claude ou nas instruções personalizadas do ChatGPT: tudo o que o Mirante desenha e os limites. Assim todo material já sai pronto.")}</p></div>
+        <div class="ai-guide-btns"><button class="ai-copy" data-guide>${icon("copy")}<span>${tr("Copiar guia")}</span></button>
+        <a class="ai-more" href="${GUIDE_URL[L]}">${tr("Ver no site")}</a></div>
+      </div>`;
+    box.hidden = false; $("scrim").hidden = false;
+  }
+  const P_ICON = { doc: "doc", question: "question", both: "both" };
+  function closeAiPrompts() { $("ai-dialog").hidden = true; if ($("shortcuts").hidden) $("scrim").hidden = true; }
+  $("ai-dialog").addEventListener("click", async (e) => {
+    if (e.target.closest("[data-close]")) return closeAiPrompts();
+    const b = e.target.closest(".ai-copy");
+    if (!b) return;
+    const P = window.MIRANTE_PROMPTS, L = LANG === "en" ? "en" : "pt";
+    const text = b.dataset.guide != null ? P.guide[L] : P.prompts[+b.dataset.prompt].text[L];
+    if (await copyText(text)) {
+      const label = b.querySelector("span"), was = label.textContent;
+      b.classList.add("done"); label.textContent = tr("Copiado");
+      setTimeout(() => { b.classList.remove("done"); label.textContent = was; }, 1600);
+    }
+  });
+  $("ai-open").addEventListener("click", () => showAiPrompts());
+  $("ai-open").querySelector(".ai-ic").innerHTML = icon("sparkle");
   $("shortcuts").addEventListener("click", (e) => { if (e.target.closest("[data-close]")) closeShortcuts(); });
-  $("scrim").addEventListener("click", closeShortcuts);
+  $("scrim").addEventListener("click", () => { closeShortcuts(); closeAiPrompts(); });
 
   /* placa de vídeo, para a camada nativa escolher o modo de renderização */
   function gpuRenderer() {
@@ -1836,7 +2122,7 @@
   }
 
   window.mirante = {
-    render, setTheme, setLang, showWelcome, toggleEditor, zoomBy, getSvg, toast, undo, redo, openFind, showShortcuts,
+    render, setTheme, setLang, showWelcome, toggleEditor, zoomBy, getSvg, toast, undo, redo, openFind, showShortcuts, showAiPrompts,
     /* a camada nativa pede um valor: executa fn e responde com {type:"reply"} */
     __ask: async (id, fn) => {
       let value = null;

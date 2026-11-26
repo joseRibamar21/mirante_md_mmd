@@ -1,6 +1,6 @@
 [package]
 name = "mirante"
-version = "2.5.0"
+version = "2.5.1"
 description = "Visualizador e editor de Markdown e diagramas Mermaid"
 authors = ["José Ribamar"]
 license = "MIT"

@@ -222,6 +222,31 @@ jobs:
           n=$(pgrep -f 'Mirante.app/Contents/MacOS/' | wc -l | tr -d ' ')
           echo "Processos mirante: $n"
           [ "$n" = 1 ] || { echo "abriu mais de um processo"; exit 1; }
+      - name: O Finder oferece o Mirante em "Abrir com" para cada extensão?
+        if: always()
+        run: |
+          plist=/Applications/Mirante.app/Contents/Info.plist
+          /usr/libexec/PlistBuddy -c 'Print :CFBundleDocumentTypes' "$plist"
+          /usr/libexec/PlistBuddy -c 'Print :UTExportedTypeDeclarations' "$plist" 2>/dev/null || echo "(sem UTExportedTypeDeclarations)"
+          # o Finder registra o app sozinho ao copiar para /Applications; aqui força para não depender do tempo
+          /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f /Applications/Mirante.app
+          t=$(mktemp -d)
+          for e in md markdown mdown mkd mkdn mmd mermaid gv txt; do echo x > "$t/a.$e"; done
+          cat > "$t/check.swift" <<'EOF'
+          import AppKit
+          let pasta = CommandLine.arguments[1]
+          var falhou = false
+          for e in CommandLine.arguments.dropFirst(2) {
+            let u = URL(fileURLWithPath: "\(pasta)/a.\(e)")
+            let apps = NSWorkspace.shared.urlsForApplications(toOpen: u).map { $0.lastPathComponent }
+            let padrao = NSWorkspace.shared.urlForApplication(toOpen: u)?.lastPathComponent ?? "nenhum"
+            let ok = apps.contains("Mirante.app")
+            if !ok { falhou = true }
+            print("\(ok ? "OK " : "NÃO") .\(e)  abre por padrão com: \(padrao)  |  Abrir com: \(apps.joined(separator: ", "))")
+          }
+          exit(falhou ? 1 : 0)
+          EOF
+          swift "$t/check.swift" "$t" md markdown mdown mkd mkdn mmd mermaid gv txt
       - uses: actions/upload-artifact@v7
         if: always()
         with:

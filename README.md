@@ -11,6 +11,7 @@
 [![Licença MIT](https://img.shields.io/github/license/joseRibamar21/mirante_md_mmd?label=licen%C3%A7a)](LICENSE)
 ![Windows e Linux](https://img.shields.io/badge/plataforma-Windows%20%7C%20Linux-informational)
 
+[**Site do Mirante**](https://joseribamar21.github.io/mirante_md_mmd/) ·
 [**Baixar para Windows**](https://github.com/joseRibamar21/mirante_md_mmd/releases/latest/download/Mirante-windows-x64-setup.exe) ·
 [**Baixar para Linux (.deb)**](https://github.com/joseRibamar21/mirante_md_mmd/releases/latest/download/Mirante-linux-amd64.deb) ·
 [Todas as versões](https://github.com/joseRibamar21/mirante_md_mmd/releases) ·
@@ -132,6 +133,7 @@ WebKitGTK. Por isso o instalador tem poucos megabytes.
 | `src-tauri/src/hardware.rs` | Escolha do modo de renderização pela placa de vídeo |
 | `web/viewer.html`, `viewer.js`, `viewer.css` | A página: Markdown, diagramas, editor, busca, zoom, animações e os textos em inglês |
 | `web/mindmap.js` | Motor do mapa mental: leitura da sintaxe, layouts, desenho e edição |
+| `docs/index.html` | O site ([joseribamar21.github.io/mirante_md_mmd](https://joseribamar21.github.io/mirante_md_mmd/)); depois de editar, rode `python3 scripts/gerar-site-en.py` para gerar a versão em inglês |
 | `web/vendor/` | Mermaid, Graphviz (Viz.js), marked, DOMPurify, highlight.js e a fonte Inter ([licenças](web/vendor/LICENSES.md)) |
 | `packaging/` | Ícone, atalho do menu, tipo `.mmd` e metainfo do Linux |
 

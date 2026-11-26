@@ -3,12 +3,40 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Mirante — Markdown, Mermaid e Graphviz</title>
-<meta name="description" content="Visualizador e editor gratuito de Markdown e diagramas Mermaid e Graphviz para Windows e Linux, com mapas mentais editáveis e edição ao vivo.">
-<meta property="og:title" content="Mirante — Markdown, Mermaid e Graphviz">
-<meta property="og:description" content="Visualizador e editor gratuito de Markdown e diagramas para Windows e Linux.">
+<title>Mirante — visualizador e editor de Markdown, Mermaid e Graphviz grátis</title>
+<meta name="description" content="Mirante é um visualizador e editor grátis de Markdown, diagramas Mermaid (fluxogramas, mapas mentais) e Graphviz para Windows e Linux, com edição ao vivo e atualização automática.">
+<link rel="canonical" href="https://joseribamar21.github.io/mirante_md_mmd/">
+<link rel="alternate" hreflang="pt-BR" href="https://joseribamar21.github.io/mirante_md_mmd/">
+<link rel="alternate" hreflang="en" href="https://joseribamar21.github.io/mirante_md_mmd/en/">
+<link rel="alternate" hreflang="x-default" href="https://joseribamar21.github.io/mirante_md_mmd/en/">
+<meta property="og:title" content="Mirante — visualizador e editor de Markdown, Mermaid e Graphviz">
+<meta property="og:description" content="Visualizador e editor grátis de Markdown, mapas mentais e diagramas para Windows e Linux.">
+<meta property="og:url" content="https://joseribamar21.github.io/mirante_md_mmd/">
+<meta property="og:locale" content="pt_BR">
+<meta property="og:locale:alternate" content="en_US">
 <meta property="og:image" content="https://joseribamar21.github.io/mirante_md_mmd/loja/banner.png">
 <meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<!-- Google Search Console: a meta google-site-verification entra aqui -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "Mirante",
+  "description": "Visualizador e editor grátis de Markdown, diagramas Mermaid e Graphviz e mapas mentais, com edição ao vivo.",
+  "url": "https://joseribamar21.github.io/mirante_md_mmd/",
+  "image": "https://joseribamar21.github.io/mirante_md_mmd/assets/icon.png",
+  "screenshot": "https://joseribamar21.github.io/mirante_md_mmd/capturas/editor.png",
+  "operatingSystem": "Windows 10, Windows 11, Ubuntu, Debian",
+  "applicationCategory": "DeveloperApplication",
+  "softwareVersion": "2.3.0",
+  "downloadUrl": "https://github.com/joseRibamar21/mirante_md_mmd/releases/latest",
+  "license": "https://opensource.org/licenses/MIT",
+  "isAccessibleForFree": true,
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "BRL" },
+  "author": { "@type": "Person", "name": "José Ribamar" }
+}
+</script>
 <meta name="theme-color" content="#0f1a3d">
 <link rel="icon" type="image/png" href="assets/favicon.png">
 <script>
@@ -205,9 +233,7 @@
       <a href="#apoiar"><span lang="pt">Apoiar</span><span lang="en">Support</span></a>
     </nav>
     <div class="tools">
-      <button class="pill-btn" id="lang-btn" type="button" aria-label="Idioma / Language">
-        <span lang="pt">EN</span><span lang="en">PT</span>
-      </button>
+      <a class="pill-btn" id="lang-link" href="en/" hreflang="en" title="English">EN</a>
       <a class="pill-btn" href="https://github.com/joseRibamar21/mirante_md_mmd" aria-label="GitHub">
         <svg class="i" viewBox="0 0 24 24"><path d="M9 19c-4.3 1.4-4.3-2.5-6-3m12 5v-3.5c0-1 .1-1.4-.5-2 2.8-.3 5.5-1.4 5.5-6a4.6 4.6 0 0 0-1.3-3.2 4.2 4.2 0 0 0-.1-3.2s-1.1-.3-3.5 1.3a12.3 12.3 0 0 0-6.2 0C6.5 2.8 5.4 3.1 5.4 3.1a4.2 4.2 0 0 0-.1 3.2A4.6 4.6 0 0 0 4 9.5c0 4.6 2.7 5.7 5.5 6-.6.6-.6 1.2-.5 2V21"/></svg>
         GitHub
@@ -382,16 +408,7 @@
   const root = document.documentElement;
   const REPO = "joseRibamar21/mirante_md_mmd";
 
-  /* ---------- idioma: português para quem usa português, inglês para o resto ---------- */
-  const store = { get(k) { try { return localStorage.getItem(k); } catch (_) { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch (_) {} } };
-  function setLang(l) {
-    root.dataset.lang = l; root.lang = l === "pt" ? "pt-BR" : "en";
-    document.title = l === "pt" ? "Mirante — Markdown, Mermaid e Graphviz" : "Mirante — Markdown, Mermaid and Graphviz";
-  }
-  setLang(store.get("lang") || (/^pt/i.test(navigator.language || "") ? "pt" : "en"));
-  document.getElementById("lang-btn").addEventListener("click", () => {
-    const l = root.dataset.lang === "pt" ? "en" : "pt"; setLang(l); store.set("lang", l); renderGive();
-  });
+  /* idioma: cada versão tem o seu endereço (/ e /en/), para o Google indexar as duas */
   const t = (pt, en) => (root.dataset.lang === "pt" ? pt : en);
 
   /* ---------- versão atual ---------- */

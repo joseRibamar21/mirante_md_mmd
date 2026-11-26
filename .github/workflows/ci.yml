@@ -40,12 +40,21 @@ jobs:
 
       - run: npm ci
 
+      - name: Prompts de IA em dia com docs/ia/
+        if: runner.os == 'Linux'
+        run: python3 scripts/gerar-ia.py --check
+
       - name: Testes do Rust
         working-directory: src-tauri
         run: cargo test
 
       - name: Gerar instaladores
         run: npx tauri build
+
+      - name: Pacote MSIX (Microsoft Store), com identidade de teste
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: pwsh packaging/msix/build-msix.ps1 -Out src-tauri/target/release/bundle/msix/Mirante-teste.msix
 
       - uses: actions/upload-artifact@v7
         with:
@@ -54,6 +63,7 @@ jobs:
             src-tauri/target/release/bundle/deb/*.deb
             src-tauri/target/release/bundle/nsis/*.exe
             src-tauri/target/release/bundle/msi/*.msi
+            src-tauri/target/release/bundle/msix/*.msix
           if-no-files-found: error
 
   windows:
@@ -123,6 +133,44 @@ jobs:
 
           if ($title -notlike '*mapa-mental.mmd*') { throw "título inesperado: '$title'" }
           if ($count -ne 1) { throw "instância única falhou: $count processos" }
+
+      # o MSIX só instala assinado: aqui com um certificado de teste (na Store, quem assina é a Microsoft)
+      - name: Instalar e abrir o MSIX
+        shell: pwsh
+        run: |
+          $msix = Get-ChildItem dist -Recurse -Filter *.msix | Select-Object -First 1
+          if (-not $msix) { throw "MSIX não encontrado nos artefatos" }
+          $cert = New-SelfSignedCertificate -Type CodeSigningCert -Subject "CN=Mirante Teste" -CertStoreLocation Cert:\CurrentUser\My `
+            -TextExtension @("2.5.29.37={text}1.3.6.1.5.5.7.3.3", "2.5.29.19={text}")
+          Export-Certificate -Cert $cert -FilePath teste.cer | Out-Null
+          Import-Certificate -FilePath teste.cer -CertStoreLocation Cert:\LocalMachine\TrustedPeople | Out-Null
+          $signtool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin\*\x64\signtool.exe" |
+            Sort-Object { [version]$_.Directory.Parent.Name } | Select-Object -Last 1
+          & $signtool.FullName sign /fd SHA256 /sha1 $cert.Thumbprint $msix.FullName
+          if ($LASTEXITCODE) { throw "signtool falhou" }
+          Add-AppxPackage -Path $msix.FullName
+          $pkg = Get-AppxPackage -Name "Mirante.Teste"
+          if (-not $pkg) { throw "o MSIX não instalou" }
+          Write-Host "Instalado: $($pkg.PackageFullName)"
+          # o da etapa anterior ainda está aberto e a instância única mandaria o pedido para ele
+          Get-Process mirante -ErrorAction SilentlyContinue | Stop-Process -Force
+          Start-Sleep 2
+          Start-Process "shell:AppsFolder\$($pkg.PackageFamilyName)!Mirante"
+          $title = ""
+          for ($i = 0; $i -lt 60 -and $title -notlike '*Mirante*'; $i++) {
+            Start-Sleep 1
+            $p = Get-Process mirante -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowTitle }
+            if ($p) { $title = @($p)[0].MainWindowTitle }
+          }
+          Write-Host "Título da janela: $title"
+          if ($title -notlike '*Mirante*') { throw "o Mirante do MSIX não abriu" }
+          Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+          Start-Sleep 3
+          $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+          $bmp = New-Object System.Drawing.Bitmap $b.Width, $b.Height
+          $g = [System.Drawing.Graphics]::FromImage($bmp)
+          $g.CopyFromScreen($b.Location, [System.Drawing.Point]::Empty, $b.Size)
+          $bmp.Save("shots\3-msix.png"); $g.Dispose(); $bmp.Dispose()
 
       - uses: actions/upload-artifact@v7
         if: always()

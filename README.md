@@ -32,6 +32,11 @@ edite direto nele: o painel de código fica ao lado e o desenho acompanha enquan
 - **Diagramas do Markdown com controles próprios**: zoom, mover arrastando ou pelos botões e **expandir** em
   tela cheia sobre fundo escuro. Também dá para abrir um diagrama numa **janela só dele**, ligada ao `.md`:
   o que se edita lá volta para o bloco na hora, e <kbd>Ctrl</kbd> <kbd>S</kbd> salva o `.md`.
+- **Feito para estudar**: fórmulas matemáticas e de química (`$...$`, `$$...$$`, `\ce{}`), caixas de
+  destaque (`> [!TIP]`, `> [!WARNING]`...), perguntas com **resposta escondida** (`<details>`) e um **modo
+  revisão** que mostra ou esconde todas de uma vez, e um **mapa mental gerado pelos títulos** do documento.
+- **Gerar material com IA** (menu Ajuda): prompts prontos e um [guia de formato](docs/ia/guia.md) para o
+  Claude, o ChatGPT ou o Gemini devolverem o material já no formato do Mirante.
 - **Qualquer diagrama Mermaid** em arquivos `.mmd`: fluxogramas, sequência, Gantt, classes, estados e outros.
 - **Grafos Graphviz** em arquivos `.gv` e `.dot`, com todos os motores de layout (`dot`, `neato`, `circo`,
   `twopi`, `fdp` e outros, escolhidos pelo atributo `layout` do grafo), sem precisar instalar o Graphviz.

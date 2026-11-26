@@ -1,0 +1,44 @@
+{
+  "_comentario": "Prompts prontos do Mirante. Depois de editar, rode: python3 scripts/gerar-ia.py (gera web/prompts.js para o app).",
+  "prompts": [
+    {
+      "id": "estudo",
+      "icon": "doc",
+      "title": { "pt": "Material de estudo", "en": "Study material" },
+      "desc": {
+        "pt": "Transforma um texto, PDF ou assunto num resumo com tópicos, fórmulas, diagramas e perguntas.",
+        "en": "Turns a text, PDF or topic into a summary with topics, formulas, diagrams and questions."
+      },
+      "text": {
+        "pt": "Transforme o conteúdo abaixo em material de estudo para eu ler no Mirante, um leitor de Markdown com fórmulas, diagramas e mapa mental.\n\nRegras de formato:\n- Um arquivo .md. Se puder criar arquivos, entregue como arquivo; senão, coloque tudo dentro de um bloco com QUATRO crases (````markdown) para os blocos internos não quebrarem.\n- Um único título # com o tema; ## para cada tópico e ### para subtópicos. Títulos curtos e sem fórmulas, porque eles viram o mapa mental.\n- Comece com um resumo de 3 linhas numa caixa:\n  > [!SUMMARY]\n  > texto\n- Explique com parágrafos curtos, listas e **negrito** nos termos-chave. Use tabelas para comparar.\n- Fórmulas em LaTeX: $...$ no texto e $$...$$ em linhas próprias. Química com \\ce{}. Não use \\label nem \\eqref.\n- Inclua pelo menos um diagrama Mermaid (```mermaid) que ajude a entender: fluxograma, sequência, linha do tempo ou mapa mental. Texto com parênteses vai entre aspas, como A[\"texto (assim)\"], e não use end como nome de nó.\n- Use caixas > [!TIP] para dicas, > [!WARNING] para erros comuns e > [!EXAMPLE] para exemplos resolvidos.\n- Termine com ## Revisão: 5 perguntas, cada uma com a resposta escondida assim (as linhas em branco são obrigatórias):\n\n<details>\n<summary>Ver resposta</summary>\n\nresposta\n\n</details>\n\nConteúdo:\n[cole aqui o texto, anexe o PDF ou escreva o assunto]",
+        "en": "Turn the content below into study material for me to read in Mirante, a Markdown reader with formulas, diagrams and mind maps.\n\nFormat rules:\n- One .md file. If you can create files, deliver it as a file; otherwise put everything inside a block with FOUR backticks (````markdown) so the inner blocks don't break.\n- A single # heading with the subject; ## for each topic and ### for subtopics. Short headings with no formulas, because they become the mind map.\n- Start with a 3-line summary in a box:\n  > [!SUMMARY]\n  > text\n- Explain with short paragraphs, lists and **bold** key terms. Use tables to compare.\n- Formulas in LaTeX: $...$ inline and $$...$$ on their own lines. Chemistry with \\ce{}. Don't use \\label or \\eqref.\n- Include at least one Mermaid diagram (```mermaid) that helps understanding: flowchart, sequence, timeline or mind map. Text with parentheses goes in quotes, like A[\"text (like this)\"], and don't use end as a node name.\n- Use > [!TIP] boxes for tips, > [!WARNING] for common mistakes and > [!EXAMPLE] for worked examples.\n- End with ## Review: 5 questions, each with its answer hidden like this (the blank lines are required):\n\n<details>\n<summary>Show answer</summary>\n\nanswer\n\n</details>\n\nContent:\n[paste the text here, attach the PDF or write the topic]"
+      }
+    },
+    {
+      "id": "revisao",
+      "icon": "question",
+      "title": { "pt": "Lista de exercícios", "en": "Practice questions" },
+      "desc": {
+        "pt": "Perguntas da mais fácil à mais difícil, com a resposta comentada escondida até você clicar.",
+        "en": "Questions from easiest to hardest, with a worked answer hidden until you click."
+      },
+      "text": {
+        "pt": "Crie uma lista de exercícios para eu me testar no Mirante (leitor de Markdown com fórmulas e respostas escondidas) sobre o conteúdo abaixo.\n\nRegras de formato:\n- Um arquivo .md. Se puder criar arquivos, entregue como arquivo; senão, dentro de um bloco com QUATRO crases (````markdown).\n- Um título # com o tema e um ## para cada parte do assunto.\n- 10 perguntas numeradas, da mais fácil à mais difícil. Use múltipla escolha quando fizer sentido, com as alternativas a), b), c) e d) em lista.\n- Depois de cada pergunta, a resposta comentada escondida assim (as linhas em branco são obrigatórias):\n\n<details>\n<summary>Ver resposta</summary>\n\nresposta com a explicação\n\n</details>\n\n- Fórmulas em LaTeX: $...$ no texto e $$...$$ em linhas próprias. Química com \\ce{}.\n- Se um diagrama Mermaid ajudar a explicar uma resposta, coloque dentro do <details>.\n- No fim, uma caixa > [!TIP] com os erros mais comuns nesse assunto.\n\nConteúdo:\n[cole aqui o texto, anexe o PDF ou escreva o assunto]",
+        "en": "Create practice questions for me to test myself in Mirante (a Markdown reader with formulas and hidden answers) about the content below.\n\nFormat rules:\n- One .md file. If you can create files, deliver it as a file; otherwise inside a block with FOUR backticks (````markdown).\n- A # heading with the subject and a ## for each part of it.\n- 10 numbered questions, from easiest to hardest. Use multiple choice when it makes sense, with options a), b), c) and d) as a list.\n- After each question, the worked answer hidden like this (the blank lines are required):\n\n<details>\n<summary>Show answer</summary>\n\nanswer with the explanation\n\n</details>\n\n- Formulas in LaTeX: $...$ inline and $$...$$ on their own lines. Chemistry with \\ce{}.\n- If a Mermaid diagram helps explain an answer, put it inside the <details>.\n- At the end, a > [!TIP] box with the most common mistakes on this topic.\n\nContent:\n[paste the text here, attach the PDF or write the topic]"
+      }
+    },
+    {
+      "id": "mapa",
+      "icon": "both",
+      "title": { "pt": "Mapa mental", "en": "Mind map" },
+      "desc": {
+        "pt": "Um mapa mental do assunto, para abrir, reorganizar e exportar no Mirante.",
+        "en": "A mind map of the topic, to open, rearrange and export in Mirante."
+      },
+      "text": {
+        "pt": "Faça um mapa mental do assunto abaixo para eu abrir no Mirante.\n\nRegras de formato:\n- Entregue um arquivo .mmd com só o código Mermaid, sem crases, começando pela linha mindmap. Se não puder criar arquivos, mostre o código num bloco ```mermaid.\n- O tema no centro como root((Tema)), de 4 a 7 ramos principais e até 3 níveis.\n- Textos de no máximo 5 palavras. A hierarquia vem da indentação, com 2 espaços por nível.\n- Texto com parênteses ou colchetes vai entre aspas, como Ramo[\"texto (assim)\"].\n\nAssunto:\n[cole aqui o texto, anexe o PDF ou escreva o assunto]",
+        "en": "Make a mind map of the topic below for me to open in Mirante.\n\nFormat rules:\n- Deliver a .mmd file with only the Mermaid code, no backticks, starting with the line mindmap. If you can't create files, show the code in a ```mermaid block.\n- The subject in the center as root((Subject)), 4 to 7 main branches and up to 3 levels.\n- Texts of 5 words at most. The hierarchy comes from indentation, 2 spaces per level.\n- Text with parentheses or brackets goes in quotes, like Branch[\"text (like this)\"].\n\nTopic:\n[paste the text here, attach the PDF or write the topic]"
+      }
+    }
+  ]
+}

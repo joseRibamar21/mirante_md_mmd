@@ -11,4 +11,5 @@ o texto completo está em [`licenses/`](licenses/).
 | `purify.min.js` | [DOMPurify](https://github.com/cure53/DOMPurify) | 3.2.4 | Apache-2.0 ou MPL-2.0 · [texto](licenses/dompurify-Apache-2.0.txt) |
 | `highlight.min.js`, `hl-light.css`, `hl-dark.css` | [highlight.js](https://github.com/highlightjs/highlight.js) | 11.11.1 | BSD-3-Clause · [texto](licenses/highlightjs-BSD-3-Clause.txt) |
 | `gh-light.css`, `gh-dark.css` | [github-markdown-css](https://github.com/sindresorhus/github-markdown-css) | — | MIT · [texto](licenses/github-markdown-css-MIT.txt) |
+| `katex/` (JS, CSS, fontes woff2 e a extensão mhchem) | [KaTeX](https://github.com/KaTeX/KaTeX) | 0.19.1 | MIT · [texto](licenses/katex-MIT.txt) |
 | `inter-latin.woff2`, `inter-latin-ext.woff2` | [Inter](https://github.com/rsms/inter) | — | SIL OFL 1.1 · [texto](licenses/inter-OFL-1.1.txt) |

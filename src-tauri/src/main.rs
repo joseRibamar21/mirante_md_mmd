@@ -1047,6 +1047,7 @@ fn build_menu(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
         .item(&idioma)
         .build()?;
     let ajuda = SubmenuBuilder::new(app, t("Ajuda", "Help"))
+        .item(&item("ai-prompts", t("Gerar material de estudo com IA…", "Generate study material with AI…"), None)?)
         .item(&item("shortcuts", t("Atalhos de teclado", "Keyboard shortcuts"), Some("F1"))?)
         .item(&item("about", t("Sobre o Mirante", "About Mirante"), None)?)
         .build()?;
@@ -1095,6 +1096,7 @@ fn menu_action(app: &AppHandle, label: &str, id: &str) {
             set_dark(app, dark, None);
         }
         "shortcuts" => js(app, label, "mirante.showShortcuts()"),
+        "ai-prompts" => js(app, label, "mirante.showAiPrompts()"),
         "about" => about(app, label),
         "lang-auto" => set_language(app, None),
         "lang-pt" => set_language(app, Some("pt")),

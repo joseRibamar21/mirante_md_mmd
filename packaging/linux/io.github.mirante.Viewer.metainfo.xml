@@ -53,6 +53,13 @@
   </provides>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="2.4.0" date="2026-11-26">
+      <description>
+        <p>Feito para estudar: fórmulas matemáticas e de química, caixas de destaque, perguntas com resposta
+        escondida e modo revisão, mapa mental gerado pelos títulos do documento e prompts prontos para o
+        Claude, o ChatGPT ou o Gemini gerarem material no formato do Mirante.</p>
+      </description>
+    </release>
     <release version="2.3.0" date="2026-11-25">
       <description>
         <p>Diagramas dentro do Markdown ganharam zoom, movimento e modo expandido em tela cheia, e podem

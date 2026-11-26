@@ -215,6 +215,66 @@ kbd {
 .mermaid-block svg { max-width: 100%; height: auto; }
 .mermaid-block.mm-inline { padding: 0; overflow: hidden; }
 .mermaid-block.mm-inline > .mm-host { flex: none; }
+/* respostas escondidas (<details>): cartão com seta própria; o modo revisão abre ou fecha todas */
+.markdown-body details {
+  margin: 0 0 16px; border: 1px solid var(--sep); border-radius: 14px;
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+  transition: background-color .2s var(--ease);
+}
+.markdown-body details[open] { background: var(--hover); }
+.markdown-body details > summary {
+  list-style: none; display: flex; align-items: center; gap: 10px; padding: 11px 16px; border-radius: 13px;
+  cursor: pointer; user-select: none; font-weight: 600; color: var(--accent);
+  transition: background-color .15s var(--ease);
+}
+.markdown-body details > summary::-webkit-details-marker { display: none; }
+.markdown-body details > summary::marker { content: ""; }
+.markdown-body details > summary::before {
+  content: ""; flex: none; width: 15px; height: 15px; background: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 5.5l6.5 6.5L9 18.5'/%3E%3C/svg%3E") center / contain no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 5.5l6.5 6.5L9 18.5'/%3E%3C/svg%3E") center / contain no-repeat;
+  transition: transform .25s var(--ease);
+}
+.markdown-body details[open] > summary::before { transform: rotate(90deg); }
+.markdown-body details > summary:hover { background: color-mix(in srgb, var(--accent) 9%, transparent); }
+.markdown-body details > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.markdown-body details > summary > * { display: inline; margin: 0; }
+.markdown-body details > :not(summary) { margin-left: 16px; margin-right: 16px; }
+.markdown-body details > summary + * { margin-top: 2px; }
+.markdown-body details > :last-child:not(summary) { margin-bottom: 14px; }
+.markdown-body details[open] > :not(summary) { animation: det-in .26s var(--ease); }
+@keyframes det-in { from { opacity: 0; transform: translateY(-5px); } }
+body.fx-lite .markdown-body details[open] > :not(summary) { animation: none; }
+@media (prefers-reduced-motion: reduce) { .markdown-body details[open] > :not(summary) { animation: none; } }
+/* caixas de destaque: > [!NOTE] [!TIP] [!IMPORTANT] [!WARNING] [!CAUTION] [!EXAMPLE] [!QUESTION] [!SUMMARY] */
+.callout {
+  --c: #2f81f7; margin: 0 0 16px; padding: 10px 16px 12px; border-radius: 12px;
+  border-left: 3px solid var(--c); background: color-mix(in srgb, var(--c) 9%, transparent);
+}
+.callout-tip { --c: #2da44e; } .callout-important { --c: #8250df; } .callout-warning { --c: #d4a72c; }
+.callout-caution { --c: #e5484d; } .callout-example { --c: #12a5a5; } .callout-question { --c: #e8833a; }
+.callout-summary { --c: #6e7bd9; }
+.callout-title { display: flex; align-items: center; gap: 8px; font-weight: 650; color: var(--c); }
+.callout-title svg { flex: none; width: 18px; height: 18px; }
+.callout-body { margin-top: 6px; }
+.callout-body > :last-child { margin-bottom: 0; }
+/* a caixa que abre e fecha usa <details>: desfaz o visual de cartão das respostas */
+.markdown-body details.callout { border: 0; border-left: 3px solid var(--c); border-radius: 12px; background: color-mix(in srgb, var(--c) 9%, transparent); }
+.markdown-body details.callout > summary { padding: 0; border-radius: 0; color: var(--c); font-weight: 650; background: none; }
+.markdown-body details.callout > summary::before { display: none; }
+.markdown-body details.callout > :not(summary) { margin-left: 0; margin-right: 0; margin-bottom: 0; }
+details.callout > summary { list-style: none; cursor: pointer; user-select: none; }
+details.callout > summary::-webkit-details-marker { display: none; }
+details.callout > summary::after {
+  content: ""; margin-left: auto; width: 14px; height: 14px; background: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 5.5l6.5 6.5L9 18.5'/%3E%3C/svg%3E") center / contain no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 5.5l6.5 6.5L9 18.5'/%3E%3C/svg%3E") center / contain no-repeat; transition: transform .25s var(--ease);
+}
+details.callout[open] > summary::after { transform: rotate(90deg); }
+details.callout:not([open]) { padding-bottom: 10px; }
+/* fórmulas (KaTeX) */
+.math-block { margin: 0 0 16px; padding: 4px 0; overflow-x: auto; overflow-y: hidden; text-align: center; }
+.math-block .katex-display { margin: .4em 0; }
+.math-inline .katex { font-size: 1.05em; }
+.math-error { color: var(--err-fg); font-family: ui-monospace, monospace; }
 /* título de subgraph numa linha só: o Mermaid quebra em 200px mas reserva espaço para uma linha, e a
  * segunda caía em cima dos nós. Vale também na medição (o Mermaid mede fora do .mermaid-host). */
 .cluster-label foreignObject > div { max-width: none !important; white-space: nowrap !important; }
@@ -249,6 +309,11 @@ body.fx-lite #blk-modal { -webkit-backdrop-filter: none; backdrop-filter: none; 
 .bm-pan > svg { display: block; }
 .bm-bar { position: absolute; bottom: 22px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 2px; padding: 5px; }
 .bm-zoom { min-width: 46px; text-align: center; font: 500 12.5px var(--font); color: var(--fg2); font-variant-numeric: tabular-nums; }
+.bm-hint { position: absolute; top: 18px; left: 50%; transform: translateX(-50%); padding: 7px 14px; font: 500 13px var(--font); color: var(--fg2); pointer-events: none; }
+.bm-pan .mm-node { cursor: pointer; }
+/* título para onde o mapa dos títulos levou: pisca de leve */
+.markdown-body .flash { animation: flash 1.4s var(--ease); border-radius: 8px; }
+@keyframes flash { 0%, 30% { background: color-mix(in srgb, var(--accent) 22%, transparent); } 100% { background: transparent; } }
 body.blk-modal-open #dock, body.blk-modal-open #dock-hint { opacity: 0 !important; pointer-events: none; }
 
 /* ---------- palco do diagrama ---------- */
@@ -485,6 +550,47 @@ input[type="range"]::-webkit-slider-thumb {
 #shortcuts dt { white-space: nowrap; color: var(--fg2); }
 #shortcuts dd { margin: 0; min-width: 120px; }
 
+/* ---------- gerar material com IA ---------- */
+.ai-link {
+  display: inline-flex; align-items: center; gap: 7px; margin-top: 18px; padding: 8px 14px; border-radius: 11px;
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent); background: color-mix(in srgb, var(--accent) 9%, transparent);
+  color: var(--accent); font: 600 13px var(--font); cursor: pointer; transition: background-color .15s var(--ease);
+}
+.ai-link:hover { background: color-mix(in srgb, var(--accent) 16%, transparent); }
+.ai-link .ai-ic svg { width: 16px; height: 16px; display: block; }
+#ai-dialog {
+  position: fixed; z-index: 41; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  width: min(820px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow: auto; padding: 20px 24px 24px;
+  animation: rise .35s var(--spring);
+}
+#ai-dialog header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+#ai-dialog h2 { margin: 0; font-size: 17px; font-weight: 700; letter-spacing: -.01em; }
+.ai-intro { margin: 0 0 16px; color: var(--fg2); font-size: 13.5px; line-height: 1.6; }
+.ai-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.ai-card {
+  display: flex; flex-direction: column; gap: 6px; padding: 16px; border-radius: 14px;
+  background: var(--hover); border: 1px solid var(--sep);
+}
+.ai-card-ic { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 13%, transparent); margin-bottom: 4px; }
+.ai-card-ic svg { width: 18px; height: 18px; }
+.ai-card h3, .ai-guide h3 { margin: 0; font-size: 14.5px; font-weight: 650; }
+.ai-card p, .ai-guide p { margin: 0; color: var(--fg2); font-size: 13px; line-height: 1.5; }
+.ai-copy {
+  margin-top: auto; align-self: flex-start; display: inline-flex; align-items: center; gap: 7px; padding: 7px 12px; border: 0;
+  border-radius: 10px; background: var(--accent); color: #fff; font: 600 12.5px var(--font); cursor: pointer;
+  transition: filter .15s var(--ease), background-color .2s var(--ease);
+}
+.ai-card p { flex: 1; padding-bottom: 10px; }
+.ai-copy:hover { filter: brightness(1.08); }
+.ai-copy.done { background: #2da44e; }
+.ai-copy svg { width: 15px; height: 15px; }
+.ai-guide { display: flex; gap: 16px; align-items: center; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--sep); }
+.ai-guide > div:first-child { flex: 1; display: grid; gap: 4px; }
+.ai-guide-btns { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; flex: none; }
+.ai-more { font-size: 12.5px; color: var(--accent); }
+@media (max-width: 600px) { .ai-guide { flex-direction: column; align-items: stretch; } .ai-guide-btns { align-items: flex-start; } }
+
 /* ---------- editor de código ---------- */
 /* O painel é uma sobreposição e anima SÓ transform/opacity (roda na GPU, sem recalcular layout a
  * cada quadro). Como o conteúdo acompanha está em animatePanel() (viewer.js). */
@@ -566,7 +672,7 @@ body.editor-open .zoom-label { display: none; }
 }
 
 @media print {
-  #backdrop, #dock, #popover, #editor, #resizer, #node-bar, #toast, #findbar, #scrim, #shortcuts, #loading, .blk-tools, #blk-modal { display: none !important; }
+  #backdrop, #dock, #popover, #editor, #resizer, #node-bar, #toast, #findbar, #scrim, #shortcuts, #ai-dialog, #loading, .blk-tools, #blk-modal { display: none !important; }
   html, body { overflow: visible; height: auto; background: #fff; }
   #shell, #view, #doc-scroll { position: static; height: auto; overflow: visible; display: block; padding: 0; }
   .markdown-body { box-shadow: none; border: none; max-width: none; padding: 0; background: #fff !important; }

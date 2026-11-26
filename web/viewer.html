@@ -21,6 +21,7 @@
 <script src="vendor/purify.min.js"></script>
 <script src="vendor/highlight.min.js"></script>
 <script src="mindmap.js"></script>
+<script src="prompts.js"></script>
 </head>
 <body class="mode-boot">
 <div id="backdrop" aria-hidden="true"><i class="b1"></i><i class="b2"></i><i class="b3"></i><i class="b4"></i></div>
@@ -53,6 +54,7 @@
         </div>
         <h1>Mirante</h1>
         <p data-i18n-html="welcome">Abra um arquivo <b>.md</b>, <b>.mmd</b> ou <b>.gv</b> com <kbd>Ctrl</kbd> <kbd>O</kbd><br>ou arraste-o para esta janela.</p>
+        <button class="ai-link" id="ai-open" type="button"><span class="ai-ic"></span><span data-i18n="Gerar material de estudo com IA">Gerar material de estudo com IA</span></button>
         <div id="recent" hidden>
           <h2 data-i18n="Recentes">Recentes</h2>
           <ul id="recent-list"></ul>
@@ -89,6 +91,7 @@
 </div>
 <div id="scrim" hidden></div>
 <section id="shortcuts" class="glass-card" role="dialog" aria-label="Atalhos de teclado" data-i18n-aria="Atalhos de teclado" hidden></section>
+<section id="ai-dialog" class="glass-card" role="dialog" aria-label="Gerar material com IA" data-i18n-aria="Gerar material com IA" hidden></section>
 
 <nav id="dock" class="glass-pill" aria-label="Controles de visualização" data-i18n-aria="Controles de visualização"></nav>
 <div id="dock-hint" aria-hidden="true"></div>

@@ -22,7 +22,7 @@ jobs:
             os: windows-latest
           # Mac: um .dmg universal (Apple Silicon e Intel)
           - name: macOS
-            os: macos-14
+            os: macos-latest
             targets: aarch64-apple-darwin,x86_64-apple-darwin
             args: --target universal-apple-darwin --bundles app,dmg
     runs-on: ${{ matrix.os }}
@@ -189,7 +189,7 @@ jobs:
   macos:
     name: Instalar e abrir (macOS)
     needs: build
-    runs-on: macos-14
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v7
       - uses: actions/download-artifact@v8

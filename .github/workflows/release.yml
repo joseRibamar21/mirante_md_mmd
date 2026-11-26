@@ -123,6 +123,8 @@ jobs:
 
             No Mac, o app ainda não é autenticado pela Apple: na primeira vez, abra o Mirante, feche o aviso e vá em
             **Ajustes do Sistema → Privacidade e Segurança → Abrir Mesmo Assim**.
+            O Mirante já aparece em **Abrir com** para `.md`, `.mmd` e `.gv`; se outro app abrir os `.md` no clique duplo,
+            selecione um arquivo, vá em **Arquivo → Obter Informações → Abrir com → Mirante** e clique em **Alterar Tudo…**.
 
   # manda a versão nova para o winget (abre um PR no microsoft/winget-pkgs). Precisa do segredo
   # WINGET_TOKEN: um token clássico com o escopo public_repo. Sem ele, o passo é pulado.

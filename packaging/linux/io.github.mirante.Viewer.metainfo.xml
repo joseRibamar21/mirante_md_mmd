@@ -53,6 +53,12 @@
   </provides>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="2.5.0" date="2026-11-26">
+      <description>
+        <p>Versão para macOS (Apple Silicon e Intel), com os menus do Mac e os arquivos .md, .mmd e .gv abrindo
+        pelo Finder com um clique duplo.</p>
+      </description>
+    </release>
     <release version="2.4.0" date="2026-11-26">
       <description>
         <p>Feito para estudar: fórmulas matemáticas e de química, caixas de destaque, perguntas com resposta

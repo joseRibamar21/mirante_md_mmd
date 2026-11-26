@@ -5,13 +5,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Mirante — free Markdown, Mermaid and Graphviz viewer and editor</title>
-<meta name="description" content="Mirante is a free Markdown, Mermaid (flowcharts, mind maps) and Graphviz viewer and editor for Windows and Linux, with live editing and automatic reload.">
+<meta name="description" content="Mirante is a free Markdown, Mermaid (flowcharts, mind maps) and Graphviz viewer and editor for Windows, macOS and Linux, with live editing and automatic reload.">
 <link rel="canonical" href="https://joseribamar21.github.io/mirante_md_mmd/en/">
 <link rel="alternate" hreflang="pt-BR" href="https://joseribamar21.github.io/mirante_md_mmd/">
 <link rel="alternate" hreflang="en" href="https://joseribamar21.github.io/mirante_md_mmd/en/">
 <link rel="alternate" hreflang="x-default" href="https://joseribamar21.github.io/mirante_md_mmd/en/">
 <meta property="og:title" content="Mirante — Markdown, Mermaid and Graphviz viewer and editor">
-<meta property="og:description" content="Free Markdown, mind map and diagram viewer and editor for Windows and Linux.">
+<meta property="og:description" content="Free Markdown, mind map and diagram viewer and editor for Windows, macOS and Linux.">
 <meta property="og:url" content="https://joseribamar21.github.io/mirante_md_mmd/en/">
 <meta property="og:locale" content="en_US">
 <meta property="og:locale:alternate" content="pt_BR">
@@ -28,9 +28,9 @@
   "url": "https://joseribamar21.github.io/mirante_md_mmd/en/",
   "image": "https://joseribamar21.github.io/mirante_md_mmd/assets/icon.png",
   "screenshot": "https://joseribamar21.github.io/mirante_md_mmd/capturas/editor.png",
-  "operatingSystem": "Windows 10, Windows 11, Ubuntu, Debian",
+  "operatingSystem": "Windows 10, Windows 11, macOS, Ubuntu, Debian",
   "applicationCategory": "DeveloperApplication",
-  "softwareVersion": "2.4.0",
+  "softwareVersion": "2.5.0",
   "downloadUrl": "https://github.com/joseRibamar21/mirante_md_mmd/releases/latest",
   "license": "https://opensource.org/licenses/MIT",
   "isAccessibleForFree": true,
@@ -181,7 +181,8 @@
   .gallery figcaption { padding: 12px 16px; font-size: 14.5px; color: var(--fg2); border-top: 1px solid var(--line); }
 
   .alt { background: var(--bg2); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
-  .dl { display: grid; gap: 18px; grid-template-columns: repeat(2, 1fr); max-width: 900px; margin: 0 auto; }
+  .dl { display: grid; gap: 18px; grid-template-columns: repeat(3, 1fr); max-width: 1120px; margin: 0 auto; }
+  @media (max-width: 980px) { .dl { grid-template-columns: repeat(2, 1fr); } }
   @media (max-width: 760px) { .dl { grid-template-columns: 1fr; } }
   .dl .card { display: flex; flex-direction: column; gap: 14px; }
   .dl .os { display: flex; align-items: center; gap: 12px; }
@@ -240,8 +241,8 @@
     <a class="brand" href="#"><img src="../assets/icon.png" alt="" width="30" height="30">Mirante</a>
     <nav class="links">
       <a href="#recursos"><span lang="pt">Recursos</span><span lang="en">Features</span></a>
-      <a href="#ia"><span lang="pt">Com IA</span><span lang="en">With AI</span></a>
       <a href="#baixar"><span lang="pt">Baixar</span><span lang="en">Download</span></a>
+      <a href="#ia"><span lang="pt">Para estudar</span><span lang="en">For studying</span></a>
       <a href="#apoiar"><span lang="pt">Apoiar</span><span lang="en">Support</span></a>
     </nav>
     <div class="tools">
@@ -257,18 +258,18 @@
 <main>
   <div class="hero">
     <div class="wrap">
-      <a class="badge" href="#ia" id="ver-badge">
-        <span lang="pt">Novo na <span class="ver">2.4</span>: fórmulas, modo revisão e prompts para IA</span>
-        <span lang="en">New in <span class="ver">2.4</span>: formulas, review mode and AI prompts</span>
+      <a class="badge" href="#baixar" id="ver-badge">
+        <span lang="pt">Novo na <span class="ver">2.5</span>: agora também no Mac</span>
+        <span lang="en">New in <span class="ver">2.5</span>: now on Mac too</span>
         <span aria-hidden="true">→</span>
       </a>
       <h1>
-        <span lang="pt">Markdown e diagramas, <span class="grad">vivos na sua tela</span></span>
-        <span lang="en">Markdown and diagrams, <span class="grad">alive on your screen</span></span>
+        <span lang="pt">Abra Markdown e diagramas <span class="grad">com um clique duplo</span></span>
+        <span lang="en">Open Markdown and diagrams <span class="grad">with a double click</span></span>
       </h1>
       <p class="lead">
-        <span lang="pt">Abra arquivos <b>.md</b>, <b>.mmd</b>, <b>.gv</b> e <b>.txt</b> com um visual limpo, edite com o desenho atualizando enquanto você digita e veja tudo se atualizar sozinho quando o arquivo muda no disco.</span>
-        <span lang="en">Open <b>.md</b>, <b>.mmd</b>, <b>.gv</b> and <b>.txt</b> files with a clean look, edit while the drawing updates as you type, and watch everything refresh when the file changes on disk.</span>
+        <span lang="pt">O Mirante vira o app dos seus arquivos <b>.md</b>, <b>.mmd</b> e <b>.gv</b>: clique duas vezes e eles abrem com um visual limpo e os diagramas desenhados. Edite com o desenho acompanhando enquanto você digita, e tudo se atualiza sozinho quando o arquivo muda no disco.</span>
+        <span lang="en">Mirante becomes the app for your <b>.md</b>, <b>.mmd</b> and <b>.gv</b> files: double-click them and they open with a clean look and the diagrams drawn. Edit while the drawing follows your typing, and everything refreshes when the file changes on disk.</span>
       </p>
       <div class="cta">
         <a class="btn primary" id="dl-main" href="#baixar">
@@ -281,8 +282,8 @@
         </a>
       </div>
       <div class="meta">
-        <span lang="pt">Windows 10 e 11 · Ubuntu e Debian · Grátis e de código aberto (MIT)</span>
-        <span lang="en">Windows 10 and 11 · Ubuntu and Debian · Free and open source (MIT)</span>
+        <span lang="pt">Windows · Linux · macOS · Grátis e de código aberto (MIT)</span>
+        <span lang="en">Windows · Linux · macOS · Free and open source (MIT)</span>
       </div>
       <div class="shot reveal">
         <video autoplay muted loop playsinline preload="metadata" poster="../assets/demo-poster.jpg" aria-label="Demonstração do Mirante">
@@ -298,9 +299,14 @@
       <div class="sec-head reveal">
         <div class="eyebrow"><span lang="pt">Recursos</span><span lang="en">Features</span></div>
         <h2><span lang="pt">Tudo o que você precisa para ler e desenhar</span><span lang="en">Everything you need to read and draw</span></h2>
-        <p><span lang="pt">Leve, rápido e sem conta, nuvem ou assinatura.</span><span lang="en">Light and fast, with no account, cloud or subscription.</span></p>
+        <p><span lang="pt">Leve, rápido e sem conta, nuvem ou assinatura. Tema claro e escuro, em português e inglês.</span><span lang="en">Light and fast, with no account, cloud or subscription. Light and dark themes, in English and Portuguese.</span></p>
       </div>
       <div class="grid">
+        <div class="card feat reveal">
+          <div class="ic"><svg class="i" viewBox="0 0 24 24"><path d="M14 3.5H7.5A1.5 1.5 0 006 5v14a1.5 1.5 0 001.5 1.5h4"/><path d="M14 3.5v4h4v3"/><path d="M14.5 13.5l6 2.2-2.6 1.1-1.1 2.6z"/></svg></div>
+          <h3><span lang="pt">Abre com um clique duplo</span><span lang="en">Opens with a double click</span></h3>
+          <p><span lang="pt">No Windows, no macOS e no Linux, o Mirante aparece como app dos .md, .mmd e .gv. Salvou em outro programa? Ele redesenha na hora.</span><span lang="en">On Windows, macOS and Linux, Mirante shows up as the app for .md, .mmd and .gv files. Saved it in another program? It redraws right away.</span></p>
+        </div>
         <div class="card feat reveal">
           <div class="ic"><svg class="i" viewBox="0 0 24 24"><path d="M14 3.5H7.5A1.5 1.5 0 006 5v14a1.5 1.5 0 001.5 1.5h9A1.5 1.5 0 0018 19V7.5z"/><path d="M14 3.5v4h4M9 12.5h6M9 16h4"/></svg></div>
           <h3><span lang="pt">Markdown completo</span><span lang="en">Full Markdown</span></h3>
@@ -317,19 +323,14 @@
           <p><span lang="pt">O código ao lado ou em outra janela, com o desenho mudando enquanto você digita.</span><span lang="en">Code on the side or in its own window, with the drawing changing as you type.</span></p>
         </div>
         <div class="card feat reveal">
-          <div class="ic"><svg class="i" viewBox="0 0 24 24"><path d="M4 6.5L12 3l8 3.5-8 3.5z"/><path d="M7 8v5c0 1.5 2.2 3 5 3s5-1.5 5-3V8M20 6.5V12"/></svg></div>
-          <h3><span lang="pt">Feito para estudar</span><span lang="en">Made for studying</span><span class="new">2.4</span></h3>
-          <p><span lang="pt">Fórmulas de matemática e química, caixas de destaque, perguntas com resposta escondida, modo revisão e um mapa mental gerado pelos títulos.</span><span lang="en">Math and chemistry formulas, callout boxes, questions with hidden answers, review mode and a mind map built from the headings.</span></p>
-        </div>
-        <div class="card feat reveal">
           <div class="ic"><svg class="i" viewBox="0 0 24 24"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="8" r="2.5"/><circle cx="9" cy="18" r="2.5"/><path d="M8.3 7.2l7.4 1M7 8.4l1.5 7.2M16.4 10l-5.6 6.4"/></svg></div>
           <h3><span lang="pt">Graphviz sem instalar nada</span><span lang="en">Graphviz, nothing to install</span></h3>
           <p><span lang="pt">Arquivos .gv e .dot com todos os motores de layout: dot, neato, circo, twopi, fdp e outros.</span><span lang="en">.gv and .dot files with every layout engine: dot, neato, circo, twopi, fdp and more.</span></p>
         </div>
         <div class="card feat reveal">
-          <div class="ic"><svg class="i" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 019.5 4a8 8 0 1010.5 10.5z"/></svg></div>
-          <h3><span lang="pt">Claro, escuro, português e inglês</span><span lang="en">Light, dark, Portuguese and English</span></h3>
-          <p><span lang="pt">Segue o tema e o idioma do sistema. Exporta em SVG e imprime ou salva em PDF.</span><span lang="en">Follows your system's theme and language. Exports to SVG and prints or saves as PDF.</span></p>
+          <div class="ic"><svg class="i" viewBox="0 0 24 24"><path d="M4 6.5L12 3l8 3.5-8 3.5z"/><path d="M7 8v5c0 1.5 2.2 3 5 3s5-1.5 5-3V8M20 6.5V12"/></svg></div>
+          <h3><span lang="pt">Também para estudar</span><span lang="en">Good for studying too</span></h3>
+          <p><span lang="pt">Fórmulas de matemática e química, caixas de destaque, perguntas com resposta escondida, modo revisão e um mapa mental gerado pelos títulos. <a href="#ia">Peça o material a uma IA</a>.</span><span lang="en">Math and chemistry formulas, callout boxes, questions with hidden answers, review mode and a mind map built from the headings. <a href="#ia">Ask an AI for the material</a>.</span></p>
         </div>
       </div>
     </div>
@@ -346,32 +347,12 @@
     </div>
   </section>
 
-  <section id="ia" class="alt">
-    <div class="wrap">
-      <div class="sec-head reveal">
-        <div class="eyebrow"><span lang="pt">Com IA</span><span lang="en">With AI</span></div>
-        <h2><span lang="pt">Peça ao Claude, abra no Mirante</span><span lang="en">Ask Claude, open in Mirante</span></h2>
-        <p><span lang="pt">Copie um prompt, cole no Claude, ChatGPT ou Gemini com o seu conteúdo e receba um material pronto para estudar: tópicos, fórmulas, diagramas e perguntas com resposta escondida.</span><span lang="en">Copy a prompt, paste it into Claude, ChatGPT or Gemini with your content and get material ready to study: topics, formulas, diagrams and questions with hidden answers.</span></p>
-      </div>
-      <div class="grid" id="ai-cards"></div>
-      <div class="ai-guide card reveal">
-        <div>
-          <h3><span lang="pt">Guia de formato completo</span><span lang="en">Full format guide</span></h3>
-          <p><span lang="pt">Cole nas instruções de um Projeto do Claude ou nas instruções personalizadas do ChatGPT e todo material já sai pronto para o Mirante, com o que ele desenha e os limites.</span><span lang="en">Paste it into a Claude Project's instructions or ChatGPT's custom instructions and every answer comes out ready for Mirante, with what it renders and its limits.</span></p>
-        </div>
-        <div class="ai-guide-btns">
-          <a class="btn ghost" href="../ia/guia.md" lang="pt">Ver o guia</a><a class="btn ghost" href="../ia/guide.md" lang="en">View the guide</a>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <section id="baixar">
+  <section id="baixar" class="alt">
     <div class="wrap">
       <div class="sec-head reveal">
         <div class="eyebrow"><span lang="pt">Baixar</span><span lang="en">Download</span></div>
         <h2><span lang="pt">Instale em um minuto</span><span lang="en">Install in a minute</span></h2>
-        <p><span lang="pt">Versão <b class="ver">2.3.0</b> · <a href="https://github.com/joseRibamar21/mirante_md_mmd/releases/latest">o que mudou</a></span><span lang="en">Version <b class="ver">2.3.0</b> · <a href="https://github.com/joseRibamar21/mirante_md_mmd/releases/latest">what's new</a></span></p>
+        <p><span lang="pt">Versão <b class="ver">2.5.0</b> · <a href="https://github.com/joseRibamar21/mirante_md_mmd/releases/latest">o que mudou</a></span><span lang="en">Version <b class="ver">2.5.0</b> · <a href="https://github.com/joseRibamar21/mirante_md_mmd/releases/latest">what's new</a></span></p>
       </div>
       <div class="dl">
         <div class="card reveal" id="card-win">
@@ -397,6 +378,37 @@
           </a>
           <code class="cmd"><span>sudo apt install ./Mirante-linux-amd64.deb</span><button type="button" data-copy="sudo apt install ./Mirante-linux-amd64.deb" aria-label="Copiar"><svg class="i" viewBox="0 0 24 24" style="width:16px;height:16px"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5.5A1.5 1.5 0 0014.5 4h-9A1.5 1.5 0 004 5.5v9A1.5 1.5 0 005.5 16H8"/></svg></button></code>
           <p class="note"><span lang="pt">Em breve também na Snap Store, pelo App Center do Ubuntu.</span><span lang="en">Coming soon to the Snap Store, through the Ubuntu App Center.</span></p>
+        </div>
+        <div class="card reveal" id="card-mac">
+          <div class="os">
+            <svg viewBox="0 0 24 24" fill="currentColor" style="color: var(--fg)"><path d="M16.4 12.6c0-2.4 2-3.6 2.1-3.7a4.5 4.5 0 00-3.5-1.9c-1.5-.2-2.9.9-3.6.9-.8 0-1.9-.9-3.1-.8a4.7 4.7 0 00-4 2.4c-1.7 3-.4 7.3 1.2 9.7.8 1.2 1.8 2.5 3 2.4 1.2 0 1.7-.8 3.1-.8s1.9.8 3.1.8c1.3 0 2.1-1.2 2.9-2.4a10 10 0 001.3-2.7 4.2 4.2 0 01-2.5-3.9zM14 5.6a4.1 4.1 0 001-3.1 4.3 4.3 0 00-2.8 1.5 4 4 0 00-1 3 3.6 3.6 0 002.8-1.4z"/></svg>
+            <div><h3>macOS</h3><div class="sub"><span lang="pt">macOS 10.15+, Apple Silicon e Intel</span><span lang="en">macOS 10.15+, Apple Silicon and Intel</span></div></div>
+          </div>
+          <a class="btn primary" href="https://github.com/joseRibamar21/mirante_md_mmd/releases/latest/download/Mirante-macos-universal.dmg">
+            <svg class="i" viewBox="0 0 24 24"><path d="M12 4v12M6 11l6 6 6-6M5 20h14"/></svg>
+            <span lang="pt">Baixar para Mac (.dmg)</span><span lang="en">Download for Mac (.dmg)</span>
+          </a>
+          <p class="note"><span lang="pt">Abra o .dmg e arraste o Mirante para Aplicativos. O app ainda não é autenticado pela Apple: na primeira vez, abra, feche o aviso e vá em <b>Ajustes do Sistema → Privacidade e Segurança → Abrir Mesmo Assim</b>.</span><span lang="en">Open the .dmg and drag Mirante to Applications. The app isn't notarized by Apple yet: the first time, open it, close the warning and go to <b>System Settings → Privacy &amp; Security → Open Anyway</b>.</span></p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="ia">
+    <div class="wrap">
+      <div class="sec-head reveal">
+        <div class="eyebrow"><span lang="pt">Para estudar</span><span lang="en">For studying</span></div>
+        <h2><span lang="pt">Peça a uma IA, abra no Mirante</span><span lang="en">Ask an AI, open in Mirante</span></h2>
+        <p><span lang="pt">Para quem estuda: copie um prompt, cole no Claude, ChatGPT ou Gemini com o seu conteúdo e receba um material pronto para estudar: tópicos, fórmulas, diagramas e perguntas com resposta escondida.</span><span lang="en">If you study: copy a prompt, paste it into Claude, ChatGPT or Gemini with your content and get material ready to study: topics, formulas, diagrams and questions with hidden answers.</span></p>
+      </div>
+      <div class="grid" id="ai-cards"></div>
+      <div class="ai-guide card reveal">
+        <div>
+          <h3><span lang="pt">Guia de formato completo</span><span lang="en">Full format guide</span></h3>
+          <p><span lang="pt">Cole nas instruções de um Projeto do Claude ou nas instruções personalizadas do ChatGPT e todo material já sai pronto para o Mirante, com o que ele desenha e os limites.</span><span lang="en">Paste it into a Claude Project's instructions or ChatGPT's custom instructions and every answer comes out ready for Mirante, with what it renders and its limits.</span></p>
+        </div>
+        <div class="ai-guide-btns">
+          <a class="btn ghost" href="../ia/guia.md" lang="pt">Ver o guia</a><a class="btn ghost" href="../ia/guide.md" lang="en">View the guide</a>
         </div>
       </div>
     </div>
@@ -453,13 +465,16 @@
 
   /* ---------- botão principal aponta para o sistema de quem visita ---------- */
   const ua = navigator.userAgent;
-  const os = /Windows/i.test(ua) ? "win" : /Linux/i.test(ua) && !/Android/i.test(ua) ? "linux" : null;
+  const os = /Windows/i.test(ua) ? "win" : /Macintosh|Mac OS X/i.test(ua) && !/iPhone|iPad/i.test(ua) ? "mac"
+    : /Linux/i.test(ua) && !/Android/i.test(ua) ? "linux" : null;
+  const DL = {
+    win: ["Mirante-windows-x64-setup.exe", '<span lang="pt">Baixar para Windows</span><span lang="en">Download for Windows</span>'],
+    linux: ["Mirante-linux-amd64.deb", '<span lang="pt">Baixar para Linux</span><span lang="en">Download for Linux</span>'],
+    mac: ["Mirante-macos-universal.dmg", '<span lang="pt">Baixar para Mac</span><span lang="en">Download for Mac</span>'],
+  };
   if (os) {
-    const a = document.getElementById("dl-main");
-    a.href = `https://github.com/${REPO}/releases/latest/download/` + (os === "win" ? "Mirante-windows-x64-setup.exe" : "Mirante-linux-amd64.deb");
-    document.getElementById("dl-main-label").innerHTML = os === "win"
-      ? '<span lang="pt">Baixar para Windows</span><span lang="en">Download for Windows</span>'
-      : '<span lang="pt">Baixar para Linux</span><span lang="en">Download for Linux</span>';
+    document.getElementById("dl-main").href = `https://github.com/${REPO}/releases/latest/download/${DL[os][0]}`;
+    document.getElementById("dl-main-label").innerHTML = DL[os][1];
   }
 
   /* ---------- copiar ---------- */

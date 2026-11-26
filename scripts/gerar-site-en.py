@@ -18,8 +18,8 @@ TROCAS = [
         "<title>Mirante — free Markdown, Mermaid and Graphviz viewer and editor</title>",
     ),
     (
-        'content="Mirante é um visualizador e editor grátis de Markdown, diagramas Mermaid (fluxogramas, mapas mentais) e Graphviz para Windows e Linux, com edição ao vivo e atualização automática."',
-        'content="Mirante is a free Markdown, Mermaid (flowcharts, mind maps) and Graphviz viewer and editor for Windows and Linux, with live editing and automatic reload."',
+        'content="Mirante é um visualizador e editor grátis de Markdown, diagramas Mermaid (fluxogramas, mapas mentais) e Graphviz para Windows, macOS e Linux, com edição ao vivo e atualização automática."',
+        'content="Mirante is a free Markdown, Mermaid (flowcharts, mind maps) and Graphviz viewer and editor for Windows, macOS and Linux, with live editing and automatic reload."',
     ),
     (f'<link rel="canonical" href="{URL}">', f'<link rel="canonical" href="{URL}en/">'),
     (
@@ -27,8 +27,8 @@ TROCAS = [
         'content="Mirante — Markdown, Mermaid and Graphviz viewer and editor"',
     ),
     (
-        'content="Visualizador e editor grátis de Markdown, mapas mentais e diagramas para Windows e Linux."',
-        'content="Free Markdown, mind map and diagram viewer and editor for Windows and Linux."',
+        'content="Visualizador e editor grátis de Markdown, mapas mentais e diagramas para Windows, macOS e Linux."',
+        'content="Free Markdown, mind map and diagram viewer and editor for Windows, macOS and Linux."',
     ),
     (f'<meta property="og:url" content="{URL}">', f'<meta property="og:url" content="{URL}en/">'),
     ('<meta property="og:locale" content="pt_BR">', '<meta property="og:locale" content="en_US">'),

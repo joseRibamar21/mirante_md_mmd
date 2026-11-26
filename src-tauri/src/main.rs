@@ -156,8 +156,13 @@ fn tr(app: &AppHandle, pt: &'static str, en: &'static str) -> &'static str {
 fn set_language(app: &AppHandle, choice: Option<&str>) {
     state(app).settings.lock().unwrap().set_language(choice);
     let code = lang(app).code();
+    #[cfg(target_os = "macos")]
+    if let Ok(menu) = build_menu(app) {
+        let _ = app.set_menu(menu);
+    }
     for (label, w) in app.webview_windows() {
         if !label.ends_with(EDITOR_SUFFIX) {
+            #[cfg(not(target_os = "macos"))]
             if let Ok(menu) = build_menu(app) {
                 let _ = w.set_menu(menu);
             }
@@ -359,13 +364,17 @@ fn new_window(app: &AppHandle) -> tauri::Result<WebviewWindow> {
     }
 
     let nav = (app.clone(), label.clone());
-    let win = WebviewWindowBuilder::new(app, &label, WebviewUrl::App("viewer.html".into()))
+    let builder = WebviewWindowBuilder::new(app, &label, WebviewUrl::App("viewer.html".into()))
         .title(APP_NAME)
         .inner_size(1180.0, 820.0)
         .min_inner_size(520.0, 380.0)
-        .visible(false)
+        .visible(false);
+    // no Mac o menu é um só, na barra do topo (ver setup); nos outros cada janela tem o seu
+    #[cfg(not(target_os = "macos"))]
+    let builder = builder
         .menu(build_menu(app)?)
-        .on_menu_event(|w, e| menu_action(w.app_handle(), w.label(), e.id().as_ref()))
+        .on_menu_event(|w, e| menu_action(w.app_handle(), w.label(), e.id().as_ref()));
+    let win = builder
         .theme(saved.map(theme_of))
         .background_color(bg(dark))
         .initialization_script(init_script(theme, lang(app), false))
@@ -767,7 +776,9 @@ fn export_svg(app: &AppHandle, label: &str) {
 fn open_in_text_editor(app: &AppHandle, path: &Path) {
     #[cfg(windows)]
     let opened = std::process::Command::new("notepad.exe").arg(path).spawn().is_ok();
-    #[cfg(not(windows))]
+    #[cfg(target_os = "macos")]
+    let opened = std::process::Command::new("open").arg("-t").arg(path).spawn().is_ok();
+    #[cfg(not(any(windows, target_os = "macos")))]
     let opened = std::process::Command::new("gnome-text-editor").arg(path).spawn().is_ok();
     if !opened {
         let _ = app.opener().open_path(path.to_string_lossy(), None::<&str>);
@@ -1048,10 +1059,43 @@ fn build_menu(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
         .build()?;
     let ajuda = SubmenuBuilder::new(app, t("Ajuda", "Help"))
         .item(&item("ai-prompts", t("Gerar material de estudo com IA…", "Generate study material with AI…"), None)?)
-        .item(&item("shortcuts", t("Atalhos de teclado", "Keyboard shortcuts"), Some("F1"))?)
-        .item(&item("about", t("Sobre o Mirante", "About Mirante"), None)?)
-        .build()?;
-    MenuBuilder::new(app).item(&arquivo).item(&exibir).item(&ajuda).build()
+        .item(&item("shortcuts", t("Atalhos de teclado", "Keyboard shortcuts"), Some("F1"))?);
+    #[cfg(not(target_os = "macos"))]
+    let ajuda = ajuda.item(&item("about", t("Sobre o Mirante", "About Mirante"), None)?);
+    let ajuda = ajuda.build()?;
+
+    // no Mac o primeiro menu leva o nome do app; o "Sobre" fica nele
+    #[cfg(target_os = "macos")]
+    let menu = {
+        let mirante = SubmenuBuilder::new(app, APP_NAME)
+            .item(&item("about", t("Sobre o Mirante", "About Mirante"), None)?)
+            .separator()
+            .services()
+            .separator()
+            .hide()
+            .hide_others()
+            .show_all()
+            .separator()
+            .quit()
+            .build()?;
+        // sem os itens de Editar, Cmd+C, Cmd+V e Cmd+A não chegam à página; desfazer fica com o app (Cmd+Z na página)
+        let editar = SubmenuBuilder::new(app, t("Editar", "Edit")).cut().copy().paste().select_all().build()?;
+        MenuBuilder::new(app).item(&mirante).item(&arquivo).item(&editar).item(&exibir).item(&ajuda).build()
+    };
+    #[cfg(not(target_os = "macos"))]
+    let menu = MenuBuilder::new(app).item(&arquivo).item(&exibir).item(&ajuda).build();
+    menu
+}
+
+/// No Mac o menu é do app: a ação vale para a janela em foco (a de código separada conta como a principal).
+#[cfg(target_os = "macos")]
+fn menu_target(app: &AppHandle) -> String {
+    let windows = app.webview_windows();
+    let focused = windows.iter().find(|(_, w)| w.is_focused().unwrap_or(false)).map(|(l, _)| l.clone());
+    match focused {
+        Some(l) => l.strip_suffix(EDITOR_SUFFIX).map(str::to_string).unwrap_or(l),
+        None => windows.keys().find(|l| !l.ends_with(EDITOR_SUFFIX)).cloned().unwrap_or_default(),
+    }
 }
 
 fn menu_action(app: &AppHandle, label: &str, id: &str) {
@@ -1187,15 +1231,62 @@ fn main() {
                 replies: Mutex::new(HashMap::new()),
                 seq: AtomicU64::new(1),
             });
-            let args: Vec<String> = std::env::args().collect();
+            #[cfg(target_os = "macos")]
+            {
+                app.set_menu(build_menu(app.handle())?)?;
+                app.on_menu_event(|app, e| {
+                    let mut label = menu_target(app);
+                    if label.is_empty() {
+                        // nenhuma janela aberta (o Mac mantém o app vivo): a ação ganha uma janela nova
+                        match new_window(app) {
+                            Ok(w) => label = w.label().to_string(),
+                            Err(_) => return,
+                        }
+                    }
+                    menu_action(app, &label, e.id().as_ref());
+                });
+            }
+            let mut args: Vec<String> = std::env::args().collect();
+            // arquivos que o Finder mandou antes de o app ficar pronto
+            args.extend(OPENED_EARLY.lock().unwrap().drain(..));
             let cwd = std::env::current_dir().unwrap_or_default();
             open_args(app.handle(), &args, &cwd);
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![page_message])
-        .run(tauri::generate_context!())
-        .expect("erro ao iniciar o Mirante");
+        .build(tauri::generate_context!())
+        .expect("erro ao iniciar o Mirante")
+        .run(|_app, _event| {
+            // Mac: clique duplo num arquivo no Finder (ou arrastar para o ícone no Dock)
+            #[cfg(target_os = "macos")]
+            match _event {
+                tauri::RunEvent::Opened { urls } => {
+                    let files: Vec<String> = urls
+                        .iter()
+                        .filter_map(|u| u.to_file_path().ok())
+                        .map(|p| p.to_string_lossy().into_owned())
+                        .collect();
+                    if _app.try_state::<State>().is_some() {
+                        let mut args = vec![APP_NAME.to_string()];
+                        args.extend(files);
+                        open_args(_app, &args, Path::new("/"));
+                    } else {
+                        OPENED_EARLY.lock().unwrap().extend(files);
+                    }
+                }
+                // ícone do Dock clicado sem janela aberta: abre a tela inicial
+                tauri::RunEvent::Reopen { has_visible_windows: false, .. } => {
+                    if _app.try_state::<State>().is_some() {
+                        let _ = new_window(_app);
+                    }
+                }
+                _ => {}
+            }
+        });
 }
+
+/// Arquivos que o macOS pediu para abrir antes do setup terminar.
+static OPENED_EARLY: Mutex<Vec<String>> = Mutex::new(Vec::new());
 
 #[cfg(test)]
 mod tests {

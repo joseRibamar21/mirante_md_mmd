@@ -4,16 +4,17 @@
 
 # Mirante
 
-**Visualizador e editor de Markdown e diagramas Mermaid e Graphviz para Windows e Linux**
+**Visualizador e editor de Markdown e diagramas Mermaid e Graphviz para Windows, Linux e macOS**
 
 [![CI](https://github.com/joseRibamar21/mirante_md_mmd/actions/workflows/ci.yml/badge.svg)](https://github.com/joseRibamar21/mirante_md_mmd/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/joseRibamar21/mirante_md_mmd?label=vers%C3%A3o)](https://github.com/joseRibamar21/mirante_md_mmd/releases/latest)
 [![Licença MIT](https://img.shields.io/github/license/joseRibamar21/mirante_md_mmd?label=licen%C3%A7a)](LICENSE)
-![Windows e Linux](https://img.shields.io/badge/plataforma-Windows%20%7C%20Linux-informational)
+![Windows, Linux e macOS](https://img.shields.io/badge/plataforma-Windows%20%7C%20Linux%20%7C%20macOS-informational)
 
 [**Site do Mirante**](https://joseribamar21.github.io/mirante_md_mmd/) ·
 [**Baixar para Windows**](https://github.com/joseRibamar21/mirante_md_mmd/releases/latest/download/Mirante-windows-x64-setup.exe) ·
 [**Baixar para Linux (.deb)**](https://github.com/joseRibamar21/mirante_md_mmd/releases/latest/download/Mirante-linux-amd64.deb) ·
+[**Baixar para Mac**](https://github.com/joseRibamar21/mirante_md_mmd/releases/latest/download/Mirante-macos-universal.dmg) ·
 [Todas as versões](https://github.com/joseRibamar21/mirante_md_mmd/releases) ·
 [Reportar um problema](https://github.com/joseRibamar21/mirante_md_mmd/issues)
 
@@ -21,22 +22,19 @@
 
 </div>
 
-O Mirante abre arquivos **Markdown** (`.md`) e diagramas **Mermaid** (`.mmd`) e **Graphviz** (`.gv`, `.dot`) com um visual limpo e
-atualiza sozinho quando o arquivo muda no disco. Escreva no seu editor favorito e leia no Mirante, ou
+O Mirante abre arquivos **Markdown** (`.md`) e diagramas **Mermaid** (`.mmd`) e **Graphviz** (`.gv`, `.dot`) com um
+clique duplo, com um visual limpo, e atualiza sozinho quando o arquivo muda no disco. Escreva no seu editor favorito e leia no Mirante, ou
 edite direto nele: o painel de código fica ao lado e o desenho acompanha enquanto você digita.
 
 ## Recursos
 
+- **Abre com um clique duplo**: no Windows, no macOS e no Linux, o Mirante se registra como app dos `.md`,
+  `.mmd` e `.gv`, e vários arquivos abertos ficam todos no mesmo Mirante.
 - **Markdown completo**: tabelas, listas de tarefas, código com destaque de sintaxe, citações, links
   internos e diagramas Mermaid e Graphviz no meio do texto (blocos ` ```mermaid ` e ` ```dot `).
 - **Diagramas do Markdown com controles próprios**: zoom, mover arrastando ou pelos botões e **expandir** em
   tela cheia sobre fundo escuro. Também dá para abrir um diagrama numa **janela só dele**, ligada ao `.md`:
   o que se edita lá volta para o bloco na hora, e <kbd>Ctrl</kbd> <kbd>S</kbd> salva o `.md`.
-- **Feito para estudar**: fórmulas matemáticas e de química (`$...$`, `$$...$$`, `\ce{}`), caixas de
-  destaque (`> [!TIP]`, `> [!WARNING]`...), perguntas com **resposta escondida** (`<details>`) e um **modo
-  revisão** que mostra ou esconde todas de uma vez, e um **mapa mental gerado pelos títulos** do documento.
-- **Gerar material com IA** (menu Ajuda): prompts prontos e um [guia de formato](docs/ia/guia.md) para o
-  Claude, o ChatGPT ou o Gemini devolverem o material já no formato do Mirante.
 - **Qualquer diagrama Mermaid** em arquivos `.mmd`: fluxogramas, sequência, Gantt, classes, estados e outros.
 - **Grafos Graphviz** em arquivos `.gv` e `.dot`, com todos os motores de layout (`dot`, `neato`, `circo`,
   `twopi`, `fdp` e outros, escolhidos pelo atributo `layout` do grafo), sem precisar instalar o Graphviz.
@@ -54,6 +52,11 @@ edite direto nele: o painel de código fica ao lado e o desenho acompanha enquan
 - **Em português e em inglês**: segue o idioma do sistema, ou escolha em **Exibir → Idioma (Language)**.
 - **Zoom e movimento suaves a 60 fps**, com o modo de renderização escolhido pela sua placa de vídeo.
 - **Buscar** no texto (<kbd>Ctrl</kbd> <kbd>F</kbd>), **exportar** o diagrama em SVG e **imprimir** ou salvar em PDF.
+- **Também para estudar**: fórmulas matemáticas e de química (`$...$`, `$$...$$`, `\ce{}`), caixas de
+  destaque (`> [!TIP]`, `> [!WARNING]`...), perguntas com **resposta escondida** (`<details>`) e um **modo
+  revisão** que mostra ou esconde todas de uma vez, e um **mapa mental gerado pelos títulos** do documento.
+- **Gerar material com IA** (menu Ajuda): prompts prontos e um [guia de formato](docs/ia/guia.md) para o
+  Claude, o ChatGPT ou o Gemini devolverem o material já no formato do Mirante.
 
 ## Capturas
 
@@ -94,6 +97,19 @@ sudo apt install ./Mirante-linux-amd64.deb
 Depois procure **Mirante** no menu de apps, ou abra um `.md`/`.mmd`/`.gv` pelo gerenciador de arquivos.
 Para remover: `sudo apt remove mirante`.
 
+### macOS 10.15+ (Apple Silicon e Intel)
+
+Baixe o [**.dmg**](https://github.com/joseRibamar21/mirante_md_mmd/releases/latest/download/Mirante-macos-universal.dmg),
+abra e arraste o **Mirante** para **Aplicativos**.
+
+> O app ainda não é autenticado pela Apple. Na primeira vez, abra o Mirante e feche o aviso; depois vá em
+> **Ajustes do Sistema → Privacidade e Segurança**, role até o fim e clique em **Abrir Mesmo Assim**.
+> Isso só é preciso uma vez.
+
+O Mirante já aparece em **Abrir com** para `.md`, `.mmd` e `.gv`. Se outro app abrir os `.md` no clique
+duplo, selecione um arquivo, vá em **Arquivo → Obter Informações → Abrir com → Mirante** e clique em
+**Alterar Tudo…**.
+
 ## Atalhos
 
 | Geral | | Mapa mental | |
@@ -129,7 +145,7 @@ A pasta [`exemplos/`](exemplos) tem um arquivo de cada tipo para experimentar:
 
 O Mirante é feito com [Tauri 2](https://tauri.app): uma camada nativa pequena em Rust e uma página web que
 desenha tudo. No Windows a página roda no WebView2 (o motor do Edge, que já vem no sistema); no Linux, no
-WebKitGTK. Por isso o instalador tem poucos megabytes.
+WebKitGTK; no Mac, no WebKit do Safari. Por isso o instalador tem poucos megabytes.
 
 | Pasta / arquivo | Papel |
 | --- | --- |
@@ -147,7 +163,8 @@ inglesa no dicionário `EN` do `viewer.js`; no Rust, `tr(app, "Salvar", "Save")`
 interface precisa da versão em inglês nos dois lugares em que aparecer.
 
 As preferências e a lista de recentes (só nome e caminho de cada arquivo) ficam em
-`~/.config/mirante/settings.json` no Linux e em `%APPDATA%\mirante\settings.json` no Windows.
+`~/.config/mirante/settings.json` no Linux, em `%APPDATA%\mirante\settings.json` no Windows e em
+`~/Library/Application Support/mirante/settings.json` no Mac.
 
 ## Desenvolvimento
 
@@ -164,8 +181,8 @@ cd src-tauri && cargo test
 ```
 
 **Builds automáticos.** A cada push na `main` e em pull requests, o [CI](https://github.com/joseRibamar21/mirante_md_mmd/actions/workflows/ci.yml)
-compila no Linux e no Windows, roda os testes, instala os pacotes em sistemas limpos (Windows, Ubuntu 22.04
-e 24.04), abre o app e guarda os instaladores e capturas de tela como artefatos da execução.
+compila no Linux, no Windows e no Mac, roda os testes, instala os pacotes em sistemas limpos (Windows, macOS,
+Ubuntu 22.04 e 24.04), abre o app e guarda os instaladores e capturas de tela como artefatos da execução.
 
 **Publicar uma versão.** Atualize `version` em `src-tauri/Cargo.toml` e a seção `<releases>` em
 `packaging/linux/io.github.mirante.Viewer.metainfo.xml`, faça o commit e envie uma tag com o mesmo número:
@@ -181,6 +198,7 @@ plataformas e cria a release com eles anexados.
 ## Próximos passos
 
 - [x] Windows
+- [x] macOS (sem autenticação da Apple, por enquanto)
 - [ ] Snap Store (App Center do Ubuntu)
 - [ ] Microsoft Store
 - [ ] Flathub

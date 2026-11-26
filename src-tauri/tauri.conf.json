@@ -30,6 +30,7 @@
       "icons/128x128.png",
       "icons/128x128@2x.png",
       "icons/icon.ico",
+      "icons/icon.icns",
       "icons/icon.png"
     ],
     "category": "Utility",
@@ -93,6 +94,10 @@
           "/usr/share/applications/io.github.mirante.Viewer.desktop": "../packaging/linux/io.github.mirante.Viewer.desktop"
         }
       }
+    },
+    "macOS": {
+      "minimumSystemVersion": "10.15",
+      "signingIdentity": "-"
     },
     "windows": {
       "nsis": {

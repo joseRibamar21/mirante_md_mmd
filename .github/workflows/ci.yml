@@ -20,6 +20,11 @@ jobs:
             os: ubuntu-22.04
           - name: Windows
             os: windows-latest
+          # Mac: um .dmg universal (Apple Silicon e Intel)
+          - name: macOS
+            os: macos-latest
+            targets: aarch64-apple-darwin,x86_64-apple-darwin
+            args: --target universal-apple-darwin --bundles app,dmg
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
@@ -28,6 +33,8 @@ jobs:
           node-version: 22
           cache: npm
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.targets }}
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
@@ -49,7 +56,7 @@ jobs:
         run: cargo test
 
       - name: Gerar instaladores
-        run: npx tauri build
+        run: npx tauri build ${{ matrix.args }}
 
       - name: Pacote MSIX (Microsoft Store), com identidade de teste
         if: runner.os == 'Windows'
@@ -64,6 +71,7 @@ jobs:
             src-tauri/target/release/bundle/nsis/*.exe
             src-tauri/target/release/bundle/msi/*.msi
             src-tauri/target/release/bundle/msix/*.msix
+            src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
           if-no-files-found: error
 
   windows:
@@ -178,6 +186,73 @@ jobs:
           name: capturas-windows
           path: shots/
 
+  macos:
+    name: Instalar e abrir (macOS)
+    needs: build
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          name: mirante-macOS
+          path: dist
+      - name: Instalar o .dmg e abrir arquivos
+        run: |
+          mkdir shots
+          dmg=$(find dist -name '*.dmg' | head -1)
+          echo "DMG: $dmg ($(du -h "$dmg" | cut -f1))"
+          # sem tela de licença no .dmg (tauri.macos.conf.json); o yes cobre se ela voltar
+          yes | PAGER=cat hdiutil attach "$dmg" -nobrowse -mountpoint /Volumes/Mirante
+          cp -R /Volumes/Mirante/Mirante.app /Applications/
+          hdiutil detach /Volumes/Mirante
+          ls /Applications/Mirante.app/Contents/MacOS/
+          lipo -archs /Applications/Mirante.app/Contents/MacOS/*
+          codesign -dv /Applications/Mirante.app 2>&1 | grep -E 'Signature|Identifier' || true
+          # como o Finder faz num clique duplo: o arquivo chega pelo evento de abertura, não por argumento
+          open -a /Applications/Mirante.app "$PWD/exemplos/mapa-mental.mmd"
+          # o executável pode se chamar mirante ou Mirante: procura pelo caminho dentro do .app
+          for i in $(seq 40); do pgrep -f 'Mirante.app/Contents/MacOS/' >/dev/null && break; sleep 1; done
+          pgrep -fl 'Mirante.app/Contents/MacOS/' || { echo "o Mirante não abriu"; exit 1; }
+          sleep 12
+          screencapture -x shots/1-mapa-mental.png || true
+          # segundo arquivo: tem de ir para o mesmo processo
+          open -a /Applications/Mirante.app "$PWD/exemplos/estudo-fotossintese.md"
+          sleep 10
+          screencapture -x shots/2-markdown.png || true
+          n=$(pgrep -f 'Mirante.app/Contents/MacOS/' | wc -l | tr -d ' ')
+          echo "Processos mirante: $n"
+          [ "$n" = 1 ] || { echo "abriu mais de um processo"; exit 1; }
+      - name: O Finder oferece o Mirante em "Abrir com" para cada extensão?
+        if: always()
+        run: |
+          plist=/Applications/Mirante.app/Contents/Info.plist
+          /usr/libexec/PlistBuddy -c 'Print :CFBundleDocumentTypes' "$plist"
+          /usr/libexec/PlistBuddy -c 'Print :UTExportedTypeDeclarations' "$plist" 2>/dev/null || echo "(sem UTExportedTypeDeclarations)"
+          # o Finder registra o app sozinho ao copiar para /Applications; aqui força para não depender do tempo
+          /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f /Applications/Mirante.app
+          t=$(mktemp -d)
+          for e in md markdown mdown mkd mkdn mmd mermaid gv txt; do echo x > "$t/a.$e"; done
+          cat > "$t/check.swift" <<'EOF'
+          import AppKit
+          let pasta = CommandLine.arguments[1]
+          var falhou = false
+          for e in CommandLine.arguments.dropFirst(2) {
+            let u = URL(fileURLWithPath: "\(pasta)/a.\(e)")
+            let apps = NSWorkspace.shared.urlsForApplications(toOpen: u).map { $0.lastPathComponent }
+            let padrao = NSWorkspace.shared.urlForApplication(toOpen: u)?.lastPathComponent ?? "nenhum"
+            let ok = apps.contains("Mirante.app")
+            if !ok { falhou = true }
+            print("\(ok ? "OK " : "NÃO") .\(e)  abre por padrão com: \(padrao)  |  Abrir com: \(apps.joined(separator: ", "))")
+          }
+          exit(falhou ? 1 : 0)
+          EOF
+          swift "$t/check.swift" "$t" md markdown mdown mkd mkdn mmd mermaid gv txt
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: capturas-macos
+          path: shots/
+
   linux:
     name: Instalar e abrir (${{ matrix.os }})
     needs: build
@@ -195,7 +270,7 @@ jobs:
       - name: Instalar o .deb num sistema limpo
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq ./dist/deb/*.deb xvfb imagemagick dbus-x11
+          sudo apt-get install -y -qq "./$(find dist -name '*.deb' | head -1)" xvfb imagemagick dbus-x11
       - name: Abrir um mapa mental e capturar a tela
         run: |
           mkdir shots

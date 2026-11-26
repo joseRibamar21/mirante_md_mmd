@@ -19,6 +19,10 @@ jobs:
             os: ubuntu-22.04
           - name: Windows
             os: windows-latest
+          - name: macOS
+            os: macos-latest
+            targets: aarch64-apple-darwin,x86_64-apple-darwin
+            args: --target universal-apple-darwin --bundles app,dmg
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
@@ -38,6 +42,8 @@ jobs:
           node-version: 22
           cache: npm
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.targets }}
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
@@ -49,7 +55,7 @@ jobs:
           sudo apt-get install -y -qq libwebkit2gtk-4.1-dev libxdo-dev librsvg2-dev
 
       - run: npm ci
-      - run: npx tauri build
+      - run: npx tauri build ${{ matrix.args }}
 
       # nomes fixos: o README aponta para releases/latest/download/<nome>
       - name: Renomear os instaladores (Linux)
@@ -57,6 +63,11 @@ jobs:
         run: |
           mkdir out
           cp src-tauri/target/release/bundle/deb/*.deb out/Mirante-linux-amd64.deb
+      - name: Renomear os instaladores (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          mkdir out
+          cp src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg out/Mirante-macos-universal.dmg
       - name: Renomear os instaladores (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
@@ -104,10 +115,16 @@ jobs:
             | --- | --- |
             | **Windows 10 e 11** | `Mirante-windows-x64-setup.exe` (recomendado) ou `Mirante-windows-x64.msi` |
             | **Ubuntu 22.04+ / Debian 12+** | `Mirante-linux-amd64.deb` → `sudo apt install ./Mirante-linux-amd64.deb` |
+            | **macOS 10.15+** (Apple Silicon e Intel) | `Mirante-macos-universal.dmg` → arraste o Mirante para Aplicativos |
 
             No Windows o instalador registra o Mirante para abrir `.md`, `.mmd`, `.gv` e `.txt`. Se o SmartScreen avisar
             que o app é de um editor desconhecido, clique em **Mais informações → Executar assim mesmo**
             (o instalador ainda não tem assinatura digital).
+
+            No Mac, o app ainda não é autenticado pela Apple: na primeira vez, abra o Mirante, feche o aviso e vá em
+            **Ajustes do Sistema → Privacidade e Segurança → Abrir Mesmo Assim**.
+            O Mirante já aparece em **Abrir com** para `.md`, `.mmd` e `.gv`; se outro app abrir os `.md` no clique duplo,
+            selecione um arquivo, vá em **Arquivo → Obter Informações → Abrir com → Mirante** e clique em **Alterar Tudo…**.
 
   # manda a versão nova para o winget (abre um PR no microsoft/winget-pkgs). Precisa do segredo
   # WINGET_TOKEN: um token clássico com o escopo public_repo. Sem ele, o passo é pulado.

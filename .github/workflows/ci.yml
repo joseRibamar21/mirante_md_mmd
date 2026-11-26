@@ -201,7 +201,8 @@ jobs:
           mkdir shots
           dmg=$(find dist -name '*.dmg' | head -1)
           echo "DMG: $dmg ($(du -h "$dmg" | cut -f1))"
-          hdiutil attach "$dmg" -nobrowse -mountpoint /Volumes/Mirante
+          # sem tela de licença no .dmg (tauri.macos.conf.json); o yes cobre se ela voltar
+          yes | PAGER=cat hdiutil attach "$dmg" -nobrowse -mountpoint /Volumes/Mirante
           cp -R /Volumes/Mirante/Mirante.app /Applications/
           hdiutil detach /Volumes/Mirante
           ls /Applications/Mirante.app/Contents/MacOS/
@@ -244,7 +245,7 @@ jobs:
       - name: Instalar o .deb num sistema limpo
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq ./dist/deb/*.deb xvfb imagemagick dbus-x11
+          sudo apt-get install -y -qq "./$(find dist -name '*.deb' | head -1)" xvfb imagemagick dbus-x11
       - name: Abrir um mapa mental e capturar a tela
         run: |
           mkdir shots

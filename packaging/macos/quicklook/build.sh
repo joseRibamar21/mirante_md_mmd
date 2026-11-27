@@ -17,10 +17,10 @@ mkdir -p "$OUT/obj"
 lipo -create src-tauri/target/aarch64-apple-darwin/release/libmirante_preview.a \
   src-tauri/target/x86_64-apple-darwin/release/libmirante_preview.a -output "$OUT/obj/libmirante_preview.a"
 
-# appex <nome> <ponto de extensão> <classe> <fonte> [opções do swiftc...]
+# appex <nome> <ponto de extensão> <classe> <chaves próprias do NSExtensionAttributes> <fonte> [opções do swiftc...]
 appex() {
-  local name=$1 point=$2 class=$3 src=$4
-  shift 4
+  local name=$1 point=$2 class=$3 attrs=$4 src=$5
+  shift 5
   local dir="$OUT/$name.appex/Contents"
   mkdir -p "$dir/MacOS" "$dir/Resources"
   for arch in arm64 x86_64; do
@@ -29,15 +29,19 @@ appex() {
   done
   lipo -create "$OUT/obj/$name-arm64" "$OUT/obj/$name-x86_64" -output "$dir/MacOS/$name"
   sed -e "s/@NAME@/$name/g" -e "s/@POINT@/$point/g" -e "s/@CLASS@/$class/g" -e "s/@VERSION@/$VERSION/g" \
-    "$QL/Info.plist.in" > "$dir/Info.plist"
+    -e "s|@ATTRS@|      $attrs|" "$QL/Info.plist.in" > "$dir/Info.plist"
+  plutil -lint "$dir/Info.plist"
 }
 
-appex MirantePreview com.apple.quicklook.preview PreviewViewController "$QL/Preview.swift" \
+# as chaves de cada uma seguem os modelos de extensão do Xcode
+appex MirantePreview com.apple.quicklook.preview PreviewViewController \
+  '<key>QLIsDataBasedPreview</key><false/><key>QLSupportsSearchableItems</key><false/>' "$QL/Preview.swift" \
   -framework Cocoa -framework Quartz -framework WebKit
 # o visualizador do Mirante vai dentro da extensão
 cp -R web "$OUT/MirantePreview.appex/Contents/Resources/web"
 
-appex MiranteThumbnail com.apple.quicklook.thumbnail ThumbnailProvider "$QL/Thumbnail.swift" \
+appex MiranteThumbnail com.apple.quicklook.thumbnail ThumbnailProvider \
+  '<key>QLThumbnailMinimumDimension</key><integer>0</integer>' "$QL/Thumbnail.swift" \
   -import-objc-header "$QL/mirante.h" -L "$OUT/obj" -lmirante_preview \
   -framework QuickLookThumbnailing -framework AppKit -framework Security -framework SystemConfiguration -framework CoreFoundation
 

@@ -19,7 +19,7 @@ use serde_json::json;
 use webview2_com::Microsoft::Web::WebView2::Win32::*;
 use webview2_com::{
     CoreWebView2EnvironmentOptions, CreateCoreWebView2ControllerCompletedHandler, CreateCoreWebView2EnvironmentCompletedHandler,
-    ExecuteScriptCompletedHandler, NavigationCompletedEventHandler,
+    DocumentTitleChangedEventHandler, ExecuteScriptCompletedHandler, NavigationCompletedEventHandler,
 };
 use windows::Win32::Foundation::*;
 use windows::Win32::Graphics::Gdi::*;
@@ -250,6 +250,13 @@ impl IPreviewHandler_Impl for Preview_Impl {
             (st.path.clone().ok_or(Error::from(E_UNEXPECTED))?, st.parent)
         };
         let script = preview_script(&path);
+        // com o diagnóstico ligado, o fim do desenho (ou o erro) vai para o título da página e daí para o log
+        let script = if debug_on() {
+            format!("(async () => {{ try {{ await {script}; document.title = 'desenhou: ' + document.body.className; }} catch (e) {{ document.title = 'erro no preview: ' + (e && e.stack || e); }} }})(); typeof mirante")
+        } else {
+            script
+        };
+        debug_log(&format!("DoPreview: {}", path.display()));
         let viewer = dll_path().with_file_name("web").join("viewer.html");
         let url = format!("{}?embed", file_url(&viewer));
         let data_dir = std::env::var_os("LOCALAPPDATA")
@@ -259,10 +266,12 @@ impl IPreviewHandler_Impl for Preview_Impl {
             .join("PreviewWebView2");
         let st = self.st.clone();
         let created = CreateCoreWebView2EnvironmentCompletedHandler::create(Box::new(move |result, env| {
+            debug_log(&format!("ambiente WebView2: {result:?}"));
             result?;
             let env = env.ok_or(Error::from(E_FAIL))?;
             let st2 = st.clone();
             let controller_done = CreateCoreWebView2ControllerCompletedHandler::create(Box::new(move |result, controller| {
+                debug_log(&format!("controlador WebView2: {result:?} (área {:?})", st2.borrow().rect));
                 result?;
                 let controller = controller.ok_or(Error::from(E_FAIL))?;
                 unsafe {
@@ -272,15 +281,46 @@ impl IPreviewHandler_Impl for Preview_Impl {
                 let webview = unsafe { controller.CoreWebView2()? };
                 // quando a página carregar, ela recebe o arquivo
                 let js = HSTRING::from(script.as_str());
-                let navigated = NavigationCompletedEventHandler::create(Box::new(move |webview, _args| {
+                let navigated = NavigationCompletedEventHandler::create(Box::new(move |webview, args| {
+                    if let Some(args) = &args {
+                        let (mut ok, mut status) = (BOOL::default(), COREWEBVIEW2_WEB_ERROR_STATUS::default());
+                        unsafe {
+                            let _ = args.IsSuccess(&mut ok);
+                            let _ = args.WebErrorStatus(&mut status);
+                        }
+                        debug_log(&format!("navegação: sucesso={} status={}", ok.as_bool(), status.0));
+                    }
                     if let Some(webview) = webview {
-                        let ignore = ExecuteScriptCompletedHandler::create(Box::new(|_, _| Ok(())));
-                        unsafe { webview.ExecuteScript(&js, &ignore)? };
+                        let done = ExecuteScriptCompletedHandler::create(Box::new(|r, value| {
+                            debug_log(&format!("script: {r:?} -> {value}"));
+                            Ok(())
+                        }));
+                        unsafe { webview.ExecuteScript(&js, &done)? };
                     }
                     Ok(())
                 }));
                 let mut token = 0i64;
                 unsafe {
+                    if debug_on() {
+                        // erros de JavaScript e o fim do desenho chegam pelo título da página
+                        let catcher = HSTRING::from(
+                            "addEventListener('error', e => document.title = 'erro JS: ' + e.message + ' @ ' + e.filename + ':' + e.lineno);\
+                             addEventListener('unhandledrejection', e => document.title = 'promessa rejeitada: ' + (e.reason && e.reason.stack || e.reason));",
+                        );
+                        let ignore = webview2_com::AddScriptToExecuteOnDocumentCreatedCompletedHandler::create(Box::new(|_, _| Ok(())));
+                        webview.AddScriptToExecuteOnDocumentCreated(&catcher, &ignore)?;
+                        let titled = DocumentTitleChangedEventHandler::create(Box::new(|webview, _| {
+                            if let Some(webview) = webview {
+                                let mut t = PWSTR::null();
+                                if webview.DocumentTitle(&mut t).is_ok() {
+                                    debug_log(&format!("título: {}", webview2_com::take_pwstr(t)));
+                                }
+                            }
+                            Ok(())
+                        }));
+                        let mut t2 = 0i64;
+                        webview.add_DocumentTitleChanged(&titled, &mut t2)?;
+                    }
                     webview.add_NavigationCompleted(&navigated, &mut token)?;
                     webview.Navigate(&HSTRING::from(url.as_str()))?;
                 }
@@ -353,6 +393,21 @@ fn file_url(path: &Path) -> String {
 }
 
 /// A chamada `mirante.preview({...})` com o conteúdo do arquivo; o Typst vai compilado.
+/// Diagnóstico do painel: com MIRANTE_PREVIEW_LOG apontando para um arquivo, cada passo do WebView2 vai para ele.
+/// Usado pelo teste do CI; no uso normal a variável não existe e nada é escrito.
+fn debug_on() -> bool {
+    std::env::var_os("MIRANTE_PREVIEW_LOG").is_some()
+}
+
+fn debug_log(msg: &str) {
+    if let Some(p) = std::env::var_os("MIRANTE_PREVIEW_LOG") {
+        use std::io::Write;
+        if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(p) {
+            let _ = writeln!(f, "{msg}");
+        }
+    }
+}
+
 fn preview_script(path: &Path) -> String {
     let text = crate::read_text(path).unwrap_or_default();
     let kind = crate::viewer_kind(path);

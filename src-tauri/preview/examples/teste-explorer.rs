@@ -1,6 +1,10 @@
 //! Teste do CI no Windows: pede ao Explorer as miniaturas de alguns arquivos (passando pelo registro, como um
 //! ícone de verdade) e abre o painel de visualização de cada um numa janela, capturando a tela.
 //!
+//! A miniatura é testada de três jeitos, para separar um defeito nosso de um limite do Windows do CI:
+//! direto na DLL (sem o Explorer), pelo Explorer como está registrada e, se esta falhar, pelo Explorer com o
+//! isolamento de processo desligado (DisableProcessIsolation).
+//!
 //! uso: teste-explorer <pasta de saída> <arquivo>...
 
 #[cfg(not(windows))]
@@ -23,12 +27,15 @@ mod imp {
     use windows::Win32::Foundation::*;
     use windows::Win32::Graphics::Gdi::*;
     use windows::Win32::System::Com::*;
-    use windows::Win32::UI::Shell::PropertiesSystem::IInitializeWithFile;
+    use windows::Win32::System::Registry::*;
+    use windows::Win32::UI::Shell::PropertiesSystem::{IInitializeWithFile, IInitializeWithStream};
     use windows::Win32::UI::Shell::*;
     use windows::Win32::UI::WindowsAndMessaging::*;
     use windows::core::*;
 
+    const CLSID_THUMBNAIL: GUID = GUID::from_u128(0x6c1d3b4e_8f2a_4c55_9e1b_2a7d4f0c9a01);
     const CLSID_PREVIEW: GUID = GUID::from_u128(0x6c1d3b4e_8f2a_4c55_9e1b_2a7d4f0c9a02);
+    const THUMB_KEY: PCWSTR = w!(r"Software\Classes\CLSID\{6C1D3B4E-8F2A-4C55-9E1B-2A7D4F0C9A01}");
 
     pub fn main() -> Result<()> {
         let args: Vec<String> = std::env::args().skip(1).collect();
@@ -38,20 +45,58 @@ mod imp {
         let mut falhas = 0;
         for f in &args[1..] {
             let name = Path::new(f).file_name().unwrap().to_string_lossy().into_owned();
-            match thumbnail(f) {
+            match direct_thumbnail(f) {
                 Ok(pix) => {
-                    save(&pix, &out.join(format!("miniatura-{name}.png")));
-                    println!("miniatura OK  {name} ({}x{})", pix.width(), pix.height());
+                    save(&pix, &out.join(format!("miniatura-direta-{name}.png")));
+                    println!("miniatura direta OK      {name} ({}x{})", pix.width(), pix.height());
                 }
                 Err(e) => {
                     falhas += 1;
-                    println!("miniatura FALHOU {name}: {e:?}");
+                    println!("miniatura direta FALHOU  {name}: {e:?}");
                 }
             }
-            match preview(f) {
+            match thumbnail(f) {
                 Ok(pix) => {
+                    save(&pix, &out.join(format!("miniatura-{name}.png")));
+                    println!("miniatura Explorer OK    {name} ({}x{})", pix.width(), pix.height());
+                }
+                Err(e) => {
+                    println!("miniatura Explorer FALHOU {name}: {e:?}");
+                    set_isolation(false);
+                    let r = thumbnail(f);
+                    set_isolation(true);
+                    match r {
+                        Ok(pix) => {
+                            save(&pix, &out.join(format!("miniatura-sem-isolamento-{name}.png")));
+                            println!("  sem isolamento de processo: OK ({}x{})", pix.width(), pix.height());
+                        }
+                        Err(e) => {
+                            falhas += 1;
+                            println!("  sem isolamento de processo: FALHOU {e:?}");
+                        }
+                    }
+                }
+            }
+            // com MIRANTE_PREVIEW_LOG, a DLL conta o que o WebView2 fez; o painel só vale se o documento foi desenhado
+            let log = std::env::var_os("MIRANTE_PREVIEW_LOG").map(PathBuf::from);
+            let antes = log.as_ref().and_then(|p| std::fs::read_to_string(p).ok()).unwrap_or_default().len();
+            let r = preview(f);
+            let novo = log.as_ref().and_then(|p| std::fs::read_to_string(p).ok()).map(|t| t.get(antes..).unwrap_or("").to_string());
+            if let Some(n) = &novo {
+                for l in n.lines() {
+                    println!("    | {l}");
+                }
+            }
+            let desenhou = novo.as_deref().map_or(true, |n| n.contains("título: desenhou"));
+            match r {
+                Ok(pix) if desenhou => {
                     save(&pix, &out.join(format!("painel-{name}.png")));
                     println!("painel OK     {name}");
+                }
+                Ok(pix) => {
+                    falhas += 1;
+                    save(&pix, &out.join(format!("painel-{name}.png")));
+                    println!("painel FALHOU {name}: a página não chegou a desenhar o documento");
                 }
                 Err(e) => {
                     falhas += 1;
@@ -77,6 +122,35 @@ mod imp {
             let _ = DeleteObject(bmp.into());
         }
         pix
+    }
+
+    /// A miniatura direto na DLL, como o processo isolado do Explorer faz: cria o handler e entrega o arquivo
+    /// como stream.
+    fn direct_thumbnail(file: &str) -> Result<Pixmap> {
+        unsafe {
+            let provider: IThumbnailProvider = CoCreateInstance(&CLSID_THUMBNAIL, None, CLSCTX_INPROC_SERVER)?;
+            let stream = SHCreateStreamOnFileEx(&HSTRING::from(file), (STGM_READ | STGM_SHARE_DENY_NONE).0, 0, false, None)?;
+            provider.cast::<IInitializeWithStream>()?.Initialize(&stream, STGM_READ.0)?;
+            let mut bmp = HBITMAP::default();
+            let mut alpha = WTSAT_UNKNOWN;
+            provider.GetThumbnail(256, &mut bmp, &mut alpha)?;
+            let pix = from_bitmap(bmp);
+            let _ = DeleteObject(bmp.into());
+            pix
+        }
+    }
+
+    /// Liga ou desliga DisableProcessIsolation na chave do handler de miniaturas e avisa o Explorer.
+    fn set_isolation(on: bool) {
+        unsafe {
+            if on {
+                let _ = RegDeleteKeyValueW(HKEY_CURRENT_USER, THUMB_KEY, w!("DisableProcessIsolation"));
+            } else {
+                let one = 1u32.to_le_bytes();
+                let _ = RegSetKeyValueW(HKEY_CURRENT_USER, THUMB_KEY, w!("DisableProcessIsolation"), REG_DWORD.0, Some(one.as_ptr() as *const _), 4);
+            }
+            SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, None, None);
+        }
     }
 
     fn from_bitmap(bmp: HBITMAP) -> Result<Pixmap> {
@@ -144,7 +218,7 @@ mod imp {
             handler.DoPreview()?;
             // o WebView2 cria-se de forma assíncrona: as mensagens precisam andar
             let start = Instant::now();
-            while start.elapsed() < Duration::from_secs(12) {
+            while start.elapsed() < Duration::from_secs(20) {
                 let mut msg = MSG::default();
                 while PeekMessageW(&mut msg, None, 0, 0, PM_REMOVE).as_bool() {
                     let _ = TranslateMessage(&msg);

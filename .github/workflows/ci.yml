@@ -174,8 +174,17 @@ jobs:
           $teste = Get-ChildItem dist -Recurse -Filter teste-explorer.exe | Select-Object -First 1
           $arquivos = 'estudo-fotossintese.md', 'fluxograma.mmd', 'artigo.tex', 'relatorio.typ' | ForEach-Object { "$PWD\exemplos\$_" }
           New-Item -ItemType Directory -Force shots | Out-Null
+          # o Windows Server pode vir com "sempre mostrar ícones, nunca miniaturas"
+          $adv = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced'
+          Write-Host "IconsOnly antes: $((Get-ItemProperty $adv -ErrorAction SilentlyContinue).IconsOnly)"
+          Set-ItemProperty $adv -Name IconsOnly -Value 0 -Type DWord
+          # diagnóstico do painel: a DLL escreve aqui cada passo do WebView2
+          $env:MIRANTE_PREVIEW_LOG = "$PWD\shots\painel-log.txt"
           & $teste.FullName shots @arquivos
-          if ($LASTEXITCODE) { throw "a prévia do Explorer falhou" }
+          $code = $LASTEXITCODE
+          Write-Host "---- log do painel ----"
+          Get-Content $env:MIRANTE_PREVIEW_LOG -ErrorAction SilentlyContinue
+          if ($code) { throw "a prévia do Explorer falhou" }
 
       # o MSIX só instala assinado: aqui com um certificado de teste (na Store, quem assina é a Microsoft)
       - name: Instalar e abrir o MSIX
@@ -293,10 +302,21 @@ jobs:
             a=/Applications/Mirante.app/Contents/PlugIns/$x.appex
             echo "== $x"; ls "$a/Contents/MacOS" || true
             codesign -dv --entitlements - "$a" 2>&1 | grep -E 'Identifier|sandbox|Signature' || true
-            pluginkit -a "$a" || true
+            codesign --verify --strict --verbose=2 "$a" 2>&1 || true
+            plutil -p "$a/Contents/Info.plist" | sed -n '/NSExtension/,$p' || true
+            pluginkit -a "$a" 2>&1 || true
           done
+          sleep 3
           pluginkit -m -v -p com.apple.quicklook.preview | grep -i mirante || echo "pré-visualização não registrada"
           pluginkit -m -v -p com.apple.quicklook.thumbnail | grep -i mirante || echo "miniaturas não registradas"
+          echo "== o que o sistema diz das extensões"
+          pluginkit -m -A -D -v -i io.github.mirante.Viewer.MiranteThumbnail 2>&1 || true
+          /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -dump 2>/dev/null \
+            | grep -i -A12 "MiranteThumbnail.appex" | head -40 || true
+          log show --last 5m --style compact --predicate 'process == "pkd" OR subsystem == "com.apple.pluginkit"' 2>/dev/null \
+            | grep -i mirante | tail -30 || true
+          # a janela do Mirante, aberta no passo anterior, não pode tapar a prévia
+          osascript -e 'quit app "Mirante"' 2>/dev/null || true; pkill -x Mirante || true; sleep 2
           qlmanage -r >/dev/null 2>&1; qlmanage -r cache >/dev/null 2>&1
           for f in estudo-fotossintese.md fluxograma.mmd artigo.tex relatorio.typ; do
             qlmanage -t -s 512 -o shots "exemplos/$f" 2>&1 | tail -2

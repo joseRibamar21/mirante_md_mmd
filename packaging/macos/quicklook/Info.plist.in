@@ -27,8 +27,7 @@
         <string>io.github.mirante.typst</string>
         <string>io.github.mirante.bibtex</string>
       </array>
-      <key>QLSupportsSearchableItems</key><false/>
-      <key>QLThumbnailMinimumDimension</key><integer>0</integer>
+@ATTRS@
     </dict>
   </dict>
 </dict>

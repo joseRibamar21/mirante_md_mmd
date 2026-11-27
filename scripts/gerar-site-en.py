@@ -18,8 +18,8 @@ TROCAS = [
         "<title>Mirante — free Markdown, Mermaid and Graphviz viewer and editor</title>",
     ),
     (
-        'content="Mirante é um visualizador e editor grátis de Markdown, diagramas Mermaid (fluxogramas, mapas mentais) e Graphviz para Windows, macOS e Linux, com edição ao vivo e atualização automática."',
-        'content="Mirante is a free Markdown, Mermaid (flowcharts, mind maps) and Graphviz viewer and editor for Windows, macOS and Linux, with live editing and automatic reload."',
+        'content="Mirante é um visualizador e editor grátis de Markdown, LaTeX, diagramas Mermaid (fluxogramas, mapas mentais) e Graphviz para Windows, macOS e Linux, com edição ao vivo e atualização automática."',
+        'content="Mirante is a free Markdown, LaTeX, Mermaid (flowcharts, mind maps) and Graphviz viewer and editor for Windows, macOS and Linux, with live editing and automatic reload."',
     ),
     (f'<link rel="canonical" href="{URL}">', f'<link rel="canonical" href="{URL}en/">'),
     (

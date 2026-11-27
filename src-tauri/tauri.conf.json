@@ -76,6 +76,18 @@
       },
       {
         "ext": [
+          "tex",
+          "latex",
+          "ltx"
+        ],
+        "name": "LaTeX",
+        "description": "Documento LaTeX",
+        "role": "Viewer",
+        "rank": "Alternate",
+        "mimeType": "text/x-tex"
+      },
+      {
+        "ext": [
           "txt"
         ],
         "name": "Texto",

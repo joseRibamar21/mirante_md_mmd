@@ -272,7 +272,7 @@ details.callout[open] > summary::after { transform: rotate(90deg); }
 details.callout:not([open]) { padding-bottom: 10px; }
 /* fórmulas (KaTeX) */
 .math-block { margin: 0 0 16px; padding: 4px 0; overflow-x: auto; overflow-y: hidden; text-align: center; }
-.math-block .katex-display { margin: .4em 0; }
+.math-block .katex-display { margin: .4em 0; padding-right: 2px; } /* o número (\tag) do KaTeX passa 2px e criava rolagem */
 .math-inline .katex { font-size: 1.05em; }
 .math-error { color: var(--err-fg); font-family: ui-monospace, monospace; }
 /* título de subgraph numa linha só: o Mermaid quebra em 200px mas reserva espaço para uma linha, e a
@@ -292,6 +292,17 @@ details.callout:not([open]) { padding-bottom: 10px; }
 .blk-tools .icon-btn:hover { color: var(--accent); }
 .mermaid-block:hover .blk-tools, .blk-tools:focus-within { opacity: 1; }
 @media (hover: none) { .blk-tools { opacity: .9; } }
+/* tabelas: botão de copiar como LaTeX no canto, aparece ao passar o mouse */
+.tbl-wrap { position: relative; width: max-content; max-width: 100%; }
+.tbl-tex {
+  position: absolute; top: -12px; right: -10px; z-index: 2; width: auto; gap: 4px; padding: 0 8px; font-size: 11.5px; font-weight: 600;
+  border-radius: 10px; background: var(--glass-solid); border: 1px solid var(--sep); box-shadow: 0 4px 14px rgba(0,0,0,.14);
+  color: var(--fg2); opacity: 0; transition: opacity .15s var(--ease);
+}
+.tbl-tex svg { width: 14px; height: 14px; }
+.tbl-tex:hover { color: var(--accent); }
+.tbl-wrap:hover .tbl-tex, .tbl-tex:focus-visible { opacity: 1; }
+@media (hover: none) { .tbl-tex { opacity: .9; } }
 .blk-sep { flex: none; width: 1px; height: 16px; margin: 0 3px; background: var(--sep); }
 
 /* tela cheia: o diagrama solto sobre fundo escuro, sem cartão */
@@ -672,7 +683,7 @@ body.editor-open .zoom-label { display: none; }
 }
 
 @media print {
-  #backdrop, #dock, #popover, #editor, #resizer, #node-bar, #toast, #findbar, #scrim, #shortcuts, #ai-dialog, #loading, .blk-tools, #blk-modal { display: none !important; }
+  #backdrop, #dock, #popover, #editor, #resizer, #node-bar, #toast, #findbar, #scrim, #shortcuts, #ai-dialog, #loading, .blk-tools, .tbl-tex, #blk-modal { display: none !important; }
   html, body { overflow: visible; height: auto; background: #fff; }
   #shell, #view, #doc-scroll { position: static; height: auto; overflow: visible; display: block; padding: 0; }
   .markdown-body { box-shadow: none; border: none; max-width: none; padding: 0; background: #fff !important; }

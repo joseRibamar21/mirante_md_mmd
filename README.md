@@ -38,6 +38,9 @@ edite direto nele: o painel de código fica ao lado e o desenho acompanha enquan
 - **Qualquer diagrama Mermaid** em arquivos `.mmd`: fluxogramas, sequência, Gantt, classes, estados e outros.
 - **Grafos Graphviz** em arquivos `.gv` e `.dot`, com todos os motores de layout (`dot`, `neato`, `circo`,
   `twopi`, `fdp` e outros, escolhidos pelo atributo `layout` do grafo), sem precisar instalar o Graphviz.
+- **Documentos LaTeX** (`.tex`): o Mirante mostra uma prévia formatada, com seções numeradas, fórmulas, tabelas,
+  figuras, teoremas, notas de rodapé, citações e referências cruzadas, e atualiza enquanto você edita. É uma prévia
+  para ler e revisar, não um compilador: pacotes como TikZ e a bibliografia em `.bib` não são desenhados.
 - **Texto simples** em arquivos `.txt`: abre direto no editor, ocupando a janela, com busca (Ctrl+F) e
   salvamento como nos outros formatos.
 - **Mapas mentais editáveis**: quatro layouts (dois lados, direita, vertical, radial) além do original do
@@ -52,6 +55,9 @@ edite direto nele: o painel de código fica ao lado e o desenho acompanha enquan
 - **Em português e em inglês**: segue o idioma do sistema, ou escolha em **Exibir → Idioma (Language)**.
 - **Zoom e movimento suaves a 60 fps**, com o modo de renderização escolhido pela sua placa de vídeo.
 - **Buscar** no texto (<kbd>Ctrl</kbd> <kbd>F</kbd>), **exportar** o diagrama em SVG e **imprimir** ou salvar em PDF.
+- **Exportar para LaTeX** (menu Arquivo): o `.md` vira um `.tex` pronto para compilar ou subir no Overleaf, com
+  título, seções, fórmulas, tabelas, caixas de destaque e os diagramas em `.svg` ao lado. Cada tabela também tem um
+  botão **LaTeX** que copia só ela, para colar num trabalho que já existe.
 - **Também para estudar**: fórmulas matemáticas e de química (`$...$`, `$$...$$`, `\ce{}`), caixas de
   destaque (`> [!TIP]`, `> [!WARNING]`...), perguntas com **resposta escondida** (`<details>`) e um **modo
   revisão** que mostra ou esconde todas de uma vez, e um **mapa mental gerado pelos títulos** do documento.

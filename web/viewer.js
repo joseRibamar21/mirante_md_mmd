@@ -50,6 +50,8 @@
     "Mostrar todas as respostas": "Show all answers", "Esconder todas as respostas": "Hide all answers",
     "Mapa mental dos títulos": "Headings mind map", "Gerar material com IA": "Generate material with AI",
     "Gerar material de estudo com IA": "Generate study material with AI", "Copiar prompt": "Copy prompt", "Copiado": "Copied",
+    "Copiar tabela como LaTeX": "Copy table as LaTeX", "Tabela copiada como LaTeX": "Table copied as LaTeX",
+    "Não foi possível copiar a tabela": "Could not copy the table", "diagrama": "diagram", "documento": "document",
     "Copie um prompt, cole no Claude, ChatGPT ou Gemini junto com o seu conteúdo (texto, PDF ou só o assunto) e abra aqui o arquivo que ele devolver.":
       "Copy a prompt, paste it into Claude, ChatGPT or Gemini along with your content (text, PDF or just the topic) and open the file it returns here.",
     "Guia de formato completo": "Full format guide", "Copiar guia": "Copy guide", "Ver no site": "View on the website",
@@ -175,8 +177,8 @@
     $("gh-css").href = vendorUrl(S.theme === "dark" ? "gh-dark.css" : "gh-light.css");
     $("hl-css").href = vendorUrl(S.theme === "dark" ? "hl-dark.css" : "hl-light.css");
   }
-  function mermaidConfig() {
-    const dark = S.theme === "dark";
+  function mermaidConfig(theme = S.theme) {
+    const dark = theme === "dark";
     const tv = dark ? {
       darkMode: true, background: "#111216", fontSize: "14px",
       primaryColor: "#1d3557", primaryTextColor: "#f5f5f7", primaryBorderColor: "#0A84FF",
@@ -723,8 +725,40 @@
       if (b) b.outerHTML = answersBtn();
     });
   }, true);
+  /* o Markdown que está na tela: o próprio texto, ou o .tex convertido por tex.js */
+  let texCache = { text: null, md: "" };
+  function mdSource() {
+    if (S.lang !== "tex") return S.text;
+    if (texCache.text !== S.text) {
+      let md;
+      try { md = window.MiranteTex.toMarkdown(S.text, { lang: LANG }); }
+      catch (err) { md = "```\n" + String((err && err.message) || err) + "\n```"; }
+      texCache = { text: S.text, md };
+    }
+    return texCache.md;
+  }
+  /* imagem do .tex sem extensão (\includegraphics{foto}): tenta as que o LaTeX procuraria */
+  const IMG_TRY = ["png", "jpg", "jpeg", "svg", "gif", "webp"];
+  function texImages(root) {
+    root.querySelectorAll('img[title="tex-noext"]').forEach((img) => {
+      img.removeAttribute("title");
+      const base = img.getAttribute("src");
+      let k = 0;
+      const next = () => {
+        if (k >= IMG_TRY.length) {
+          const box = document.createElement("em");
+          box.textContent = "[" + decodeURIComponent(base.split(/%2F|\//).pop()) + "]";
+          img.replaceWith(box);
+          return;
+        }
+        img.src = base + "." + IMG_TRY[k++];
+      };
+      img.addEventListener("error", next);
+      next();
+    });
+  }
   async function renderMarkdown(my) {
-    const raw = marked.parse(S.text.replace(FRONT_MATTER, ""));
+    const raw = marked.parse(mdSource().replace(FRONT_MATTER, ""));
     // redesenhar (tema, digitação, arquivo salvo) não fecha as respostas que a pessoa abriu
     const openAnswers = S.answersFor === S.path ? [...E.doc.querySelectorAll("details")].map((d) => d.open) : [];
     S.answersFor = S.path;
@@ -732,6 +766,8 @@
     applyCallouts(E.doc);
     E.doc.querySelectorAll("details").forEach((d, i) => { if (openAnswers[i]) d.open = true; });
     addHeadingIds(E.doc);
+    if (S.lang === "tex") texImages(E.doc);
+    addTableButtons();
     await renderMath(E.doc, my);
     if (my !== S.seq) return;
     const blockEls = [...E.doc.querySelectorAll(".mermaid-block")];
@@ -796,8 +832,8 @@
     return vizLoad;
   }
   const DOT_ENGINES = ["dot", "neato", "fdp", "sfdp", "circo", "twopi", "osage", "patchwork"];
-  function dotOptions(code) {
-    const dark = S.theme === "dark", font = "Helvetica,Arial,sans-serif";
+  function dotOptions(code, dark = S.theme === "dark") {
+    const font = "Helvetica,Arial,sans-serif";
     const fg = dark ? "#f5f5f7" : "#1c1c1e", line = dark ? "#8e8e93" : "#6e6e73";
     // o motor vem do atributo `layout` do grafo; o Viz.js só olha a opção `engine`
     const m = /\blayout\s*=\s*"?([a-z]+)/i.exec(code), engine = m && m[1].toLowerCase();
@@ -1835,6 +1871,86 @@
     clearTimeout(toastT); toastT = setTimeout(() => (E.toast.hidden = true), ms);
   }
 
+  /* ---------------- LaTeX ----------------
+   * latex.js converte o texto; aqui ficam o botão de copiar tabela e os diagramas da exportação. */
+  function addTableButtons() {
+    if (!window.MiranteLatex) return;
+    const els = E.doc.querySelectorAll("table");
+    // só as tabelas do Markdown têm token; com <table> em HTML no meio a ordem não bate, e o botão não aparece
+    if (!els.length || els.length !== MiranteLatex.tables(mdSource()).length) return;
+    els.forEach((tb, i) => {
+      const w = document.createElement("div");
+      w.className = "tbl-wrap";
+      tb.replaceWith(w); w.appendChild(tb);
+      w.insertAdjacentHTML("beforeend", `<button class="icon-btn small tbl-tex" data-tbl="${i}" title="${tr("Copiar tabela como LaTeX")}">` +
+        `${icon("copy")}<span>LaTeX</span></button>`);
+    });
+  }
+  E.doc.addEventListener("click", async (e) => {
+    const b = e.target.closest(".tbl-tex");
+    if (!b) return;
+    const t = MiranteLatex.tables(mdSource())[+b.dataset.tbl];
+    const ok = t && (await copyText(MiranteLatex.fromTable(t, { lang: LANG })));
+    toast(tr(ok ? "Tabela copiada como LaTeX" : "Não foi possível copiar a tabela"));
+  });
+  /* SVG pronto para virar arquivo: tamanho explícito (o Mermaid usa 100% e max-width) e sem estilo de tela */
+  function svgFile(svg) {
+    const el = new DOMParser().parseFromString(svg, "image/svg+xml").documentElement;
+    if (!el || el.nodeName !== "svg") return null;
+    const vb = (el.getAttribute("viewBox") || "").trim().split(/[\s,]+/).map(Number);
+    const px = (v) => { const m = /^([\d.]+)(px|pt)?$/.exec((v || "").trim()); return m ? +m[1] / (m[2] === "pt" ? 0.75 : 1) : 0; };
+    let w = px(el.getAttribute("width")), h = px(el.getAttribute("height"));
+    if (!(w > 0 && h > 0)) {
+      [w, h] = [vb[2], vb[3]];
+      if (!(w > 0 && h > 0)) return null;
+      el.setAttribute("width", w + "px"); el.setAttribute("height", h + "px");
+    }
+    el.removeAttribute("style");
+    el.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+    return { width: w, height: h, svg: '<?xml version="1.0" encoding="UTF-8"?>\n' + new XMLSerializer().serializeToString(el) };
+  }
+  /* Os diagramas são redesenhados no tema claro (vai para papel) e, no Mermaid, com rótulos em <text>:
+   * o \includesvg converte com o Inkscape, que não lê os rótulos em HTML que o Mermaid usa na tela. */
+  async function latexDiagrams(stem) {
+    const blocks = diagramBlocks();
+    const figures = [], files = [];
+    if (blocks.some((b) => b.lang === "mmd")) {
+      await loadMermaid();
+      const cfg = mermaidConfig("light");
+      cfg.htmlLabels = false; cfg.flowchart.htmlLabels = false;
+      mermaid.initialize(cfg);
+    }
+    try {
+      for (const [i, b] of blocks.entries()) {
+        let out = null;
+        try {
+          if (b.lang === "dot") {
+            const r = (await loadViz()).render(b.code, dotOptions(b.code, false));
+            if (r.status === "success") out = svgFile(r.output.slice(r.output.indexOf("<svg")));
+          } else {
+            const id = `tex-${i}-${Math.random().toString(36).slice(2, 8)}`;
+            try { out = svgFile((await mermaid.render(id, b.code)).svg); } catch (_) { document.getElementById("d" + id)?.remove(); }
+          }
+        } catch (_) { /* fica sem figura: o .tex leva o código em comentário */ }
+        if (!out) { figures.push(null); continue; }
+        const file = `${stem}-${tr("diagrama")}-${i + 1}.svg`;
+        figures.push({ file, width: out.width, height: out.height });
+        files.push({ name: file, svg: out.svg });
+      }
+    } finally {
+      if (window.mermaid) mermaidInit();
+    }
+    return { figures, files };
+  }
+  /* para a camada nativa: { tex, files: [{name, svg}] }, ou null fora de um .md */
+  async function getLatex() {
+    if (S.kind !== "md" || S.lang === "tex" || !window.MiranteLatex) return null;
+    const name = (S.path || "").split(/[\\/]/).pop();
+    const stem = name.replace(/\.[^.]+$/, "").replace(/[^\p{L}\p{N}_-]+/gu, "-") || tr("documento");
+    const { figures, files } = await latexDiagrams(stem);
+    return { tex: MiranteLatex.fromMarkdown(S.text, { lang: LANG, figures, source: name || "Markdown" }), files };
+  }
+
   /* ---------------- exportar SVG ---------------- */
   function getSvg() {
     if (S.kind !== "mmd") return "";
@@ -2048,9 +2164,9 @@
     if (S.editing) { S.editing.label.onblur = null; S.editing = null; }
     if (fresh) closeBlockModal(true);
     S.path = p.path || null;
-    // .gv/.dot usa o mesmo palco dos diagramas Mermaid ("mmd"); S.lang diz quem desenha
-    S.kind = p.kind === "dot" ? "mmd" : p.kind;
-    S.lang = p.kind === "dot" ? "dot" : null;
+    // .gv/.dot usa o mesmo palco dos diagramas Mermaid ("mmd") e o .tex o do Markdown; S.lang diz quem desenha
+    S.kind = p.kind === "dot" ? "mmd" : p.kind === "tex" ? "md" : p.kind;
+    S.lang = p.kind === "dot" || p.kind === "tex" ? p.kind : null;
     if (p.prefs) S.prefs = { ...DEFAULTS, ...p.prefs };
     S.block = !!p.block; S.blockSent = p.text;
     if (fresh) { S.history = []; S.future = []; S.selected = null; S.mdZoom = 1; S.hasFit = false; }
@@ -2146,7 +2262,7 @@
   }
 
   window.mirante = {
-    render, setTheme, setLang, showWelcome, toggleEditor, zoomBy, getSvg, toast, undo, redo, openFind, showShortcuts, showAiPrompts,
+    render, setTheme, setLang, showWelcome, toggleEditor, zoomBy, getSvg, getLatex, toast, undo, redo, openFind, showShortcuts, showAiPrompts,
     /* a camada nativa pede um valor: executa fn e responde com {type:"reply"} */
     __ask: async (id, fn) => {
       let value = null;

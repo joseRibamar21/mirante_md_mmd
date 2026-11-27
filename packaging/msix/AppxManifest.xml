@@ -68,6 +68,17 @@
           </uap:FileTypeAssociation>
         </uap:Extension>
         <uap:Extension Category="windows.fileTypeAssociation">
+          <uap:FileTypeAssociation Name="latex">
+            <uap:DisplayName>LaTeX</uap:DisplayName>
+            <uap:Logo>Assets\StoreLogo.png</uap:Logo>
+            <uap:SupportedFileTypes>
+              <uap:FileType>.tex</uap:FileType>
+              <uap:FileType>.latex</uap:FileType>
+              <uap:FileType>.ltx</uap:FileType>
+            </uap:SupportedFileTypes>
+          </uap:FileTypeAssociation>
+        </uap:Extension>
+        <uap:Extension Category="windows.fileTypeAssociation">
           <uap:FileTypeAssociation Name="text">
             <uap:DisplayName>Texto</uap:DisplayName>
             <uap:Logo>Assets\StoreLogo.png</uap:Logo>

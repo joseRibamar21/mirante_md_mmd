@@ -51,16 +51,17 @@ jobs:
         if: runner.os == 'Linux'
         run: python3 scripts/gerar-ia.py --check
 
-      - name: Testes do Rust
-        working-directory: src-tauri
-        run: cargo test --workspace
-
       # prévia no Explorer: a DLL vai dentro do instalador (tauri.windows.conf.json) e o teste-explorer.exe,
-      # para o job de instalação
+      # para o job de instalação. Vem antes dos testes: o tauri-build recusa compilar se a DLL listada
+      # nos recursos ainda não existe
       - name: Prévia do Explorer (Windows)
         if: runner.os == 'Windows'
         working-directory: src-tauri
         run: cargo build --release -p mirante-preview --example teste-explorer
+
+      - name: Testes do Rust
+        working-directory: src-tauri
+        run: cargo test --workspace
 
       # Quick Look: as extensões vão para Mirante.app/Contents/PlugIns (tauri.macos.conf.json)
       - name: Extensões do Quick Look (macOS)

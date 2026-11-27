@@ -239,7 +239,7 @@ jobs:
           # o Finder registra o app sozinho ao copiar para /Applications; aqui força para não depender do tempo
           /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f /Applications/Mirante.app
           t=$(mktemp -d)
-          for e in md markdown mdown mkd mkdn mmd mermaid gv txt; do echo x > "$t/a.$e"; done
+          for e in md markdown mdown mkd mkdn mmd mermaid gv tex txt; do echo x > "$t/a.$e"; done
           cat > "$t/check.swift" <<'EOF'
           import AppKit
           let pasta = CommandLine.arguments[1]
@@ -254,7 +254,7 @@ jobs:
           }
           exit(falhou ? 1 : 0)
           EOF
-          swift "$t/check.swift" "$t" md markdown mdown mkd mkdn mmd mermaid gv txt
+          swift "$t/check.swift" "$t" md markdown mdown mkd mkdn mmd mermaid gv tex txt
       - uses: actions/upload-artifact@v7
         if: always()
         with:

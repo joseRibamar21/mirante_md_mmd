@@ -1,0 +1,89 @@
+\documentclass[12pt]{article}
+\usepackage[brazil]{babel}
+\usepackage{amsmath,amsthm}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\destaque}[1]{\textbf{#1}}
+\DeclareMathOperator{\sen}{sen}
+\newtheorem{teorema}{Teorema}
+\newtheorem{definicao}{Definição}
+\title{Um estudo sobre funções}
+\author{Ana Souza \and Bruno Lima}
+\date{Novembro de 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Este trabalho revisa \emph{funções reais} e mostra o uso de \LaTeX{} no dia a dia.
+\end{abstract}
+
+\section{Introdução}\label{sec:intro}
+Seja $f\colon \R \to \R$ uma função\footnote{Contínua, para simplificar.}. Usamos o
+\destaque{teorema} da Seção~\ref{sec:teo} e a Equação~\eqref{eq:euler}. % comentário que some
+O custo foi de R\$~10 e 50\% do tempo --- segundo \cite{knuth}.
+
+\subsection{Notação}
+\begin{itemize}
+  \item Conjunto dos reais: $\R$;
+  \item Seno: $\sen x$;
+  \item[$\boxtimes$] tarefa feita
+  \begin{enumerate}
+    \item primeiro
+    \item segundo
+  \end{enumerate}
+\end{itemize}
+
+\begin{equation}\label{eq:euler}
+  e^{i\pi} + 1 = 0
+\end{equation}
+
+\begin{align}
+  a &= b + c \label{eq:a}\\
+  d &= e \nonumber
+\end{align}
+
+\section{Resultados}\label{sec:teo}
+
+\begin{definicao}
+Uma função é \textit{par} se $f(-x) = f(x)$.
+\end{definicao}
+
+\begin{teorema}[Pitágoras]
+Em um triângulo retângulo, $a^2 = b^2 + c^2$.
+\end{teorema}
+
+\begin{proof}
+Óbvio.
+\end{proof}
+
+\begin{table}[h]
+\centering
+\caption{Derivadas}\label{tab:der}
+\begin{tabular}{|l|c|}
+\hline
+Função & Derivada \\ \hline
+$x^n$ & $n x^{n-1}$ \\
+$|x|$ & $\operatorname{sgn}(x)$ \\
+\multicolumn{2}{c}{fim} \\
+\hline
+\end{tabular}
+\end{table}
+
+Veja a Tabela~\ref{tab:der}.
+
+\begin{lstlisting}[language=Python]
+def f(x):  # 100% {ok}
+    return x**2
+\end{lstlisting}
+
+Código inline: \verb|a_b%c| e \texttt{x\_y}. Link: \href{https://example.com}{site} e \url{https://a.org/x%20y}.
+Química: \ce{H2O}.
+
+\begin{quote}
+Uma citação.
+\end{quote}
+
+\begin{thebibliography}{9}
+\bibitem{knuth} D. Knuth. \emph{The \TeX book}. 1984.
+\end{thebibliography}
+\end{document}

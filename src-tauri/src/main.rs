@@ -27,6 +27,7 @@ const MD_EXT: &[&str] = &["md", "markdown", "mdown", "mkd", "mkdn", "mdx"];
 const TXT_EXT: &[&str] = &["txt", "text"];
 const MMD_EXT: &[&str] = &["mmd", "mermaid"];
 const DOT_EXT: &[&str] = &["gv", "dot"];
+const TEX_EXT: &[&str] = &["tex", "latex", "ltx"];
 const EDITOR_SUFFIX: &str = "-editor";
 
 /// Um documento aberto: uma janela principal.
@@ -183,12 +184,13 @@ fn kind_for(path: &Path) -> &'static str {
         Some(e) if MMD_EXT.contains(&e.as_str()) => "mmd",
         Some(e) if DOT_EXT.contains(&e.as_str()) => "dot",
         Some(e) if TXT_EXT.contains(&e.as_str()) => "txt",
+        Some(e) if TEX_EXT.contains(&e.as_str()) => "tex",
         _ => "md",
     }
 }
 
 fn is_doc(path: &Path) -> bool {
-    ext_of(path).is_some_and(|e| [MD_EXT, MMD_EXT, DOT_EXT, TXT_EXT].iter().any(|l| l.contains(&e.as_str())))
+    ext_of(path).is_some_and(|e| [MD_EXT, MMD_EXT, DOT_EXT, TXT_EXT, TEX_EXT].iter().any(|l| l.contains(&e.as_str())))
 }
 
 /// Caminho absoluto. No Windows sem `canonicalize`, que devolve o formato `\\?\C:\...`.
@@ -716,15 +718,16 @@ fn reload_if_changed(app: &AppHandle, label: &str) {
 }
 
 fn open_dialog(app: &AppHandle, label: &str) {
-    let all: Vec<&str> = MD_EXT.iter().chain(MMD_EXT).chain(DOT_EXT).chain(TXT_EXT).copied().collect();
+    let all: Vec<&str> = MD_EXT.iter().chain(MMD_EXT).chain(DOT_EXT).chain(TEX_EXT).chain(TXT_EXT).copied().collect();
     let mut d = app
         .dialog()
         .file()
         .set_title(tr(app, "Abrir arquivo", "Open file"))
-        .add_filter(tr(app, "Markdown, diagramas e texto", "Markdown, diagrams and text"), &all)
+        .add_filter(tr(app, "Markdown, LaTeX, diagramas e texto", "Markdown, LaTeX, diagrams and text"), &all)
         .add_filter("Markdown", MD_EXT)
         .add_filter("Mermaid", MMD_EXT)
         .add_filter("Graphviz", DOT_EXT)
+        .add_filter("LaTeX", TEX_EXT)
         .add_filter(tr(app, "Texto", "Text"), TXT_EXT)
         .add_filter(tr(app, "Todos os arquivos", "All files"), &["*"]);
     if let Some(dir) = doc_path(app, label).and_then(|p| p.parent().map(Path::to_path_buf)) {
@@ -767,6 +770,62 @@ fn export_svg(app: &AppHandle, label: &str) {
             if let Some(out) = f.and_then(|f| f.into_path().ok()) {
                 if let Err(e) = fs::write(&out, svg) {
                     error(&h, &l2, &format!("{}\n{e}", tr(&h, "Não foi possível exportar:", "Could not export:")));
+                }
+            }
+        });
+    });
+}
+
+/// Exporta o .md como LaTeX: o .tex no lugar escolhido e um .svg por diagrama na mesma pasta
+/// (o .tex os inclui com \\includesvg pelo nome).
+fn export_latex(app: &AppHandle, label: &str) {
+    // de uma janela de diagrama, exporta o .md dono dela
+    let l = owner(app, label);
+    let path = doc_path(app, &l);
+    ask(app, &l.clone(), "mirante.getLatex()", move |app, v| {
+        let Some(tex) = v["tex"].as_str().map(str::to_string) else {
+            error(app, &l, tr(app, "Abra um arquivo Markdown (.md) para exportar como LaTeX.", "Open a Markdown (.md) file to export it as LaTeX."));
+            return;
+        };
+        let files: Vec<(String, String)> = v["files"]
+            .as_array()
+            .map(|a| {
+                a.iter()
+                    .filter_map(|f| Some((f["name"].as_str()?.to_string(), f["svg"].as_str()?.to_string())))
+                    // só o nome do arquivo: nada de subir de pasta
+                    .filter(|(n, _)| !n.contains(['/', '\\']) && !n.starts_with('.'))
+                    .collect()
+            })
+            .unwrap_or_default();
+        let stem = path
+            .as_ref()
+            .and_then(|p| p.file_stem())
+            .map(|s| s.to_string_lossy().into_owned())
+            .unwrap_or_else(|| tr(app, "documento", "document").into());
+        let mut d = app.dialog().file().set_title(tr(app, "Exportar como LaTeX", "Export as LaTeX")).add_filter("LaTeX", &["tex"]).set_file_name(format!("{stem}.tex"));
+        if let Some(dir) = path.as_ref().and_then(|p| p.parent()) {
+            d = d.set_directory(dir);
+        }
+        if let Some(w) = app.get_webview_window(&l) {
+            d = d.set_parent(&w);
+        }
+        let (h, l2) = (app.clone(), l.clone());
+        d.save_file(move |f| {
+            let Some(out) = f.and_then(|f| f.into_path().ok()) else { return };
+            let dir = out.parent().map(Path::to_path_buf).unwrap_or_default();
+            let res = fs::write(&out, &tex).and_then(|_| files.iter().try_for_each(|(n, svg)| fs::write(dir.join(n), svg)));
+            match res {
+                Err(e) => error(&h, &l2, &format!("{}\n{e}", tr(&h, "Não foi possível exportar:", "Could not export:"))),
+                Ok(()) => {
+                    let msg = match (files.len(), lang(&h)) {
+                        (0, Lang::En) => "Exported as LaTeX.".to_string(),
+                        (0, _) => "Exportado como LaTeX.".to_string(),
+                        (1, Lang::En) => "Exported as LaTeX, with 1 diagram in SVG next to it.".to_string(),
+                        (1, _) => "Exportado como LaTeX, com 1 diagrama em SVG ao lado.".to_string(),
+                        (n, Lang::En) => format!("Exported as LaTeX, with {n} diagrams in SVG next to it."),
+                        (n, _) => format!("Exportado como LaTeX, com {n} diagramas em SVG ao lado."),
+                    };
+                    toast(&h, &l2, &msg, 4000);
                 }
             }
         });
@@ -1028,6 +1087,7 @@ fn build_menu(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
         .item(&item("reload", t("Recarregar do disco", "Reload from disk"), Some("F5"))?)
         .separator()
         .item(&item("export-svg", t("Exportar diagrama como SVG…", "Export diagram as SVG…"), Some("CmdOrCtrl+Shift+E"))?)
+        .item(&item("export-latex", t("Exportar como LaTeX (.tex)…", "Export as LaTeX (.tex)…"), None)?)
         .item(&item("print", t("Imprimir / salvar PDF…", "Print / save as PDF…"), Some("CmdOrCtrl+P"))?)
         .separator()
         .item(&item("folder", t("Mostrar na pasta", "Show in folder"), None)?)
@@ -1105,6 +1165,7 @@ fn menu_action(app: &AppHandle, label: &str, id: &str) {
         "save" => save(app, label, None),
         "reload" => reload_from_disk(app, label),
         "export-svg" => export_svg(app, label),
+        "export-latex" => export_latex(app, label),
         "print" => {
             if let Some(w) = app.get_webview_window(label) {
                 let _ = w.print();
@@ -1312,6 +1373,8 @@ mod tests {
         assert_eq!(kind_for(Path::new("grafo.gv")), "dot");
         assert_eq!(kind_for(Path::new("grafo.dot")), "dot");
         assert_eq!(kind_for(Path::new("notas.TXT")), "txt");
+        assert_eq!(kind_for(Path::new("artigo.tex")), "tex");
+        assert!(is_doc(Path::new("artigo.TEX")) && is_doc(Path::new("cap.ltx")));
         assert!(is_doc(Path::new("lista.txt")));
         assert!(is_doc(Path::new("grafo.gv")) && is_doc(Path::new("a.mermaid")));
         assert!(!is_doc(Path::new("foto.png")));

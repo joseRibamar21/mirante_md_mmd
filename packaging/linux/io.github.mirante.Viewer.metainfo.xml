@@ -50,9 +50,17 @@
     <mediatype>text/markdown</mediatype>
     <mediatype>text/vnd.mermaid</mediatype>
     <mediatype>text/vnd.graphviz</mediatype>
+    <mediatype>text/x-tex</mediatype>
   </provides>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="2.6.0" date="2026-11-27">
+      <description>
+        <p>LaTeX: arquivos .tex abrem com uma prévia formatada (seções numeradas, fórmulas, tabelas, figuras,
+        teoremas, notas de rodapé e referências), o Markdown pode ser exportado como .tex pronto para compilar
+        ou subir no Overleaf, e cada tabela ganha um botão que a copia em LaTeX.</p>
+      </description>
+    </release>
     <release version="2.5.1" date="2026-11-26">
       <description>
         <p>Correção: imagens do Markdown com caminho absoluto (/home/..., C:\..., file://) voltam a aparecer.</p>

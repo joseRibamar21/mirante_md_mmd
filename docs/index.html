@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Mirante — visualizador e editor de Markdown, Mermaid e Graphviz grátis</title>
-<meta name="description" content="Mirante é um visualizador e editor grátis de Markdown, diagramas Mermaid (fluxogramas, mapas mentais) e Graphviz para Windows, macOS e Linux, com edição ao vivo e atualização automática.">
+<meta name="description" content="Mirante é um visualizador e editor grátis de Markdown, LaTeX, diagramas Mermaid (fluxogramas, mapas mentais) e Graphviz para Windows, macOS e Linux, com edição ao vivo e atualização automática.">
 <link rel="canonical" href="https://joseribamar21.github.io/mirante_md_mmd/">
 <link rel="alternate" hreflang="pt-BR" href="https://joseribamar21.github.io/mirante_md_mmd/">
 <link rel="alternate" hreflang="en" href="https://joseribamar21.github.io/mirante_md_mmd/en/">
@@ -29,7 +29,7 @@
   "screenshot": "https://joseribamar21.github.io/mirante_md_mmd/capturas/editor.png",
   "operatingSystem": "Windows 10, Windows 11, macOS, Ubuntu, Debian",
   "applicationCategory": "DeveloperApplication",
-  "softwareVersion": "2.5.1",
+  "softwareVersion": "2.6.0",
   "downloadUrl": "https://github.com/joseRibamar21/mirante_md_mmd/releases/latest",
   "license": "https://opensource.org/licenses/MIT",
   "isAccessibleForFree": true,
@@ -257,9 +257,9 @@
 <main>
   <div class="hero">
     <div class="wrap">
-      <a class="badge" href="#baixar" id="ver-badge">
-        <span lang="pt">Novo na <span class="ver">2.5</span>: agora também no Mac</span>
-        <span lang="en">New in <span class="ver">2.5</span>: now on Mac too</span>
+      <a class="badge" href="#latex" id="ver-badge">
+        <span lang="pt">Novo na <span class="ver">2.6</span>: abra e exporte LaTeX</span>
+        <span lang="en">New in <span class="ver">2.6</span>: open and export LaTeX</span>
         <span aria-hidden="true">→</span>
       </a>
       <h1>
@@ -267,8 +267,8 @@
         <span lang="en">Open Markdown and diagrams <span class="grad">with a double click</span></span>
       </h1>
       <p class="lead">
-        <span lang="pt">O Mirante vira o app dos seus arquivos <b>.md</b>, <b>.mmd</b> e <b>.gv</b>: clique duas vezes e eles abrem com um visual limpo e os diagramas desenhados. Edite com o desenho acompanhando enquanto você digita, e tudo se atualiza sozinho quando o arquivo muda no disco.</span>
-        <span lang="en">Mirante becomes the app for your <b>.md</b>, <b>.mmd</b> and <b>.gv</b> files: double-click them and they open with a clean look and the diagrams drawn. Edit while the drawing follows your typing, and everything refreshes when the file changes on disk.</span>
+        <span lang="pt">O Mirante vira o app dos seus arquivos <b>.md</b>, <b>.mmd</b>, <b>.gv</b> e <b>.tex</b>: clique duas vezes e eles abrem com um visual limpo e os diagramas desenhados. Edite com o desenho acompanhando enquanto você digita, e tudo se atualiza sozinho quando o arquivo muda no disco.</span>
+        <span lang="en">Mirante becomes the app for your <b>.md</b>, <b>.mmd</b>, <b>.gv</b> and <b>.tex</b> files: double-click them and they open with a clean look and the diagrams drawn. Edit while the drawing follows your typing, and everything refreshes when the file changes on disk.</span>
       </p>
       <div class="cta">
         <a class="btn primary" id="dl-main" href="#baixar">
@@ -304,7 +304,7 @@
         <div class="card feat reveal">
           <div class="ic"><svg class="i" viewBox="0 0 24 24"><path d="M14 3.5H7.5A1.5 1.5 0 006 5v14a1.5 1.5 0 001.5 1.5h4"/><path d="M14 3.5v4h4v3"/><path d="M14.5 13.5l6 2.2-2.6 1.1-1.1 2.6z"/></svg></div>
           <h3><span lang="pt">Abre com um clique duplo</span><span lang="en">Opens with a double click</span></h3>
-          <p><span lang="pt">No Windows, no macOS e no Linux, o Mirante aparece como app dos .md, .mmd e .gv. Salvou em outro programa? Ele redesenha na hora.</span><span lang="en">On Windows, macOS and Linux, Mirante shows up as the app for .md, .mmd and .gv files. Saved it in another program? It redraws right away.</span></p>
+          <p><span lang="pt">No Windows, no macOS e no Linux, o Mirante aparece como app dos .md, .mmd, .gv e .tex. Salvou em outro programa? Ele redesenha na hora.</span><span lang="en">On Windows, macOS and Linux, Mirante shows up as the app for .md, .mmd, .gv and .tex files. Saved it in another program? It redraws right away.</span></p>
         </div>
         <div class="card feat reveal">
           <div class="ic"><svg class="i" viewBox="0 0 24 24"><path d="M14 3.5H7.5A1.5 1.5 0 006 5v14a1.5 1.5 0 001.5 1.5h9A1.5 1.5 0 0018 19V7.5z"/><path d="M14 3.5v4h4M9 12.5h6M9 16h4"/></svg></div>
@@ -335,6 +335,33 @@
     </div>
   </section>
 
+  <section id="latex" style="padding-top: 0">
+    <div class="wrap">
+      <div class="sec-head reveal">
+        <div class="eyebrow"><span lang="pt">Novo na 2.6</span><span lang="en">New in 2.6</span></div>
+        <h2><span lang="pt">LaTeX sem complicação</span><span lang="en">LaTeX made easy</span></h2>
+        <p><span lang="pt">Escreva em Markdown e entregue no formato que a faculdade pede, ou leia um .tex sem precisar compilar.</span><span lang="en">Write in Markdown and hand in the format your school asks for, or read a .tex without compiling it.</span></p>
+      </div>
+      <div class="grid">
+        <div class="card feat reveal">
+          <div class="ic"><svg class="i" viewBox="0 0 24 24"><path d="M14 3.5H7.5A1.5 1.5 0 006 5v14a1.5 1.5 0 001.5 1.5h9A1.5 1.5 0 0018 19V7.5z"/><path d="M14 3.5v4h4"/><path d="M9 12h6M9 15.5h3.5"/></svg></div>
+          <h3><span lang="pt">Abre arquivos .tex</span><span lang="en">Opens .tex files</span></h3>
+          <p><span lang="pt">Prévia formatada com seções numeradas, fórmulas, tabelas, figuras, teoremas, notas de rodapé e referências, atualizando enquanto você edita.</span><span lang="en">A formatted preview with numbered sections, formulas, tables, figures, theorems, footnotes and references, updating as you edit.</span></p>
+        </div>
+        <div class="card feat reveal">
+          <div class="ic"><svg class="i" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5"/><path d="M5 17v1.5A1.5 1.5 0 006.5 20h11a1.5 1.5 0 001.5-1.5V17"/></svg></div>
+          <h3><span lang="pt">Exporta para LaTeX</span><span lang="en">Exports to LaTeX</span></h3>
+          <p><span lang="pt">Seu .md vira um .tex pronto para compilar ou subir no Overleaf, com fórmulas, tabelas, caixas de destaque e os diagramas em SVG.</span><span lang="en">Your .md becomes a .tex ready to compile or upload to Overleaf, with formulas, tables, callout boxes and the diagrams as SVG.</span></p>
+        </div>
+        <div class="card feat reveal">
+          <div class="ic"><svg class="i" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M4 10h16M10 10v9"/></svg></div>
+          <h3><span lang="pt">Copia tabelas</span><span lang="en">Copies tables</span></h3>
+          <p><span lang="pt">Um botão em cada tabela copia só ela em LaTeX, para colar num trabalho que já existe.</span><span lang="en">A button on each table copies just that table as LaTeX, to paste into a paper you already have.</span></p>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <section style="padding-top: 0">
     <div class="wrap">
       <div class="gallery">
@@ -351,7 +378,7 @@
       <div class="sec-head reveal">
         <div class="eyebrow"><span lang="pt">Baixar</span><span lang="en">Download</span></div>
         <h2><span lang="pt">Instale em um minuto</span><span lang="en">Install in a minute</span></h2>
-        <p><span lang="pt">Versão <b class="ver">2.5.1</b> · <a href="https://github.com/joseRibamar21/mirante_md_mmd/releases/latest">o que mudou</a></span><span lang="en">Version <b class="ver">2.5.1</b> · <a href="https://github.com/joseRibamar21/mirante_md_mmd/releases/latest">what's new</a></span></p>
+        <p><span lang="pt">Versão <b class="ver">2.6.0</b> · <a href="https://github.com/joseRibamar21/mirante_md_mmd/releases/latest">o que mudou</a></span><span lang="en">Version <b class="ver">2.6.0</b> · <a href="https://github.com/joseRibamar21/mirante_md_mmd/releases/latest">what's new</a></span></p>
       </div>
       <div class="dl">
         <div class="card reveal" id="card-win">

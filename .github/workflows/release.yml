@@ -117,13 +117,13 @@ jobs:
             | **Ubuntu 22.04+ / Debian 12+** | `Mirante-linux-amd64.deb` → `sudo apt install ./Mirante-linux-amd64.deb` |
             | **macOS 10.15+** (Apple Silicon e Intel) | `Mirante-macos-universal.dmg` → arraste o Mirante para Aplicativos |
 
-            No Windows o instalador registra o Mirante para abrir `.md`, `.mmd`, `.gv` e `.txt`. Se o SmartScreen avisar
+            No Windows o instalador registra o Mirante para abrir `.md`, `.mmd`, `.gv`, `.tex` e `.txt`. Se o SmartScreen avisar
             que o app é de um editor desconhecido, clique em **Mais informações → Executar assim mesmo**
             (o instalador ainda não tem assinatura digital).
 
             No Mac, o app ainda não é autenticado pela Apple: na primeira vez, abra o Mirante, feche o aviso e vá em
             **Ajustes do Sistema → Privacidade e Segurança → Abrir Mesmo Assim**.
-            O Mirante já aparece em **Abrir com** para `.md`, `.mmd` e `.gv`; se outro app abrir os `.md` no clique duplo,
+            O Mirante já aparece em **Abrir com** para `.md`, `.mmd`, `.gv` e `.tex`; se outro app abrir os `.md` no clique duplo,
             selecione um arquivo, vá em **Arquivo → Obter Informações → Abrir com → Mirante** e clique em **Alterar Tudo…**.
 
   # manda a versão nova para o winget (abre um PR no microsoft/winget-pkgs). Precisa do segredo

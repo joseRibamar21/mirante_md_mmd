@@ -169,7 +169,15 @@ jobs:
         shell: pwsh
         run: |
           $dir = Split-Path $env:MIRANTE_EXE
-          Write-Host "DLL: $(Test-Path "$dir\mirante_preview.dll")  web: $(Test-Path "$dir\web\viewer.html")"
+          Write-Host "DLL: $(Test-Path "$dir\mirante_preview.dll")  web: $(Test-Path "$dir\web\viewer.html")  vendor: $(Test-Path "$dir\web\vendor\marked.min.js")"
+          if (-not (Test-Path "$dir\web\vendor\marked.min.js")) { throw "a pasta web\vendor não foi instalada (o instalador achatou as pastas)" }
+          # quem o Explorer consulta para o .md: o ProgID, o tipo genérico e os handlers de cada um
+          $md = Get-ItemProperty 'Registry::HKEY_CLASSES_ROOT\.md' -ErrorAction SilentlyContinue
+          Write-Host ".md -> ProgID '$($md.'(default)')'  PerceivedType '$($md.PerceivedType)'"
+          foreach ($k in "$($md.'(default)')", 'SystemFileAssociations\.md', "SystemFileAssociations\$($md.PerceivedType)", '.md') {
+            $v = (Get-ItemProperty "Registry::HKEY_CLASSES_ROOT\$k\ShellEx\{e357fccd-a995-4576-b01f-234630154e96}" -ErrorAction SilentlyContinue).'(default)'
+            Write-Host "  miniatura em HKCR\$k = $v"
+          }
           Get-ChildItem "HKCU:\Software\Classes\.md\ShellEx" -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "$($_.PSChildName) = $((Get-ItemProperty $_.PSPath).'(default)')" }
           $teste = Get-ChildItem dist -Recurse -Filter teste-explorer.exe | Select-Object -First 1
           $arquivos = 'estudo-fotossintese.md', 'fluxograma.mmd', 'artigo.tex', 'relatorio.typ' | ForEach-Object { "$PWD\exemplos\$_" }
@@ -304,17 +312,21 @@ jobs:
             codesign -dv --entitlements - "$a" 2>&1 | grep -E 'Identifier|sandbox|Signature' || true
             codesign --verify --strict --verbose=2 "$a" 2>&1 || true
             plutil -p "$a/Contents/Info.plist" | sed -n '/NSExtension/,$p' || true
-            pluginkit -a "$a" 2>&1 || true
+            ls -la "$a/Contents/MacOS"; lipo -info "$a/Contents/MacOS/$x" || true
+            otool -l "$a/Contents/MacOS/$x" | grep -A4 LC_BUILD_VERSION | head -10 || true
+            pluginkit -a -v "$a" 2>&1 || true
           done
-          sleep 3
+          lsregister=/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister
+          $lsregister -f -R -trusted /Applications/Mirante.app 2>&1 | tail -5 || true
+          sleep 5
           pluginkit -m -v -p com.apple.quicklook.preview | grep -i mirante || echo "pré-visualização não registrada"
           pluginkit -m -v -p com.apple.quicklook.thumbnail | grep -i mirante || echo "miniaturas não registradas"
           echo "== o que o sistema diz das extensões"
           pluginkit -m -A -D -v -i io.github.mirante.Viewer.MiranteThumbnail 2>&1 || true
           /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -dump 2>/dev/null \
             | grep -i -A12 "MiranteThumbnail.appex" | head -40 || true
-          log show --last 5m --style compact --predicate 'process == "pkd" OR subsystem == "com.apple.pluginkit"' 2>/dev/null \
-            | grep -i mirante | tail -30 || true
+          log show --last 5m --info --debug --style compact --predicate 'process == "pkd" OR subsystem == "com.apple.pluginkit"' 2>/dev/null \
+            | grep -i -E "mirante|thumbnail|reject|invalid|error" | tail -40 || true
           # a janela do Mirante, aberta no passo anterior, não pode tapar a prévia
           osascript -e 'quit app "Mirante"' 2>/dev/null || true; pkill -x Mirante || true; sleep 2
           qlmanage -r >/dev/null 2>&1; qlmanage -r cache >/dev/null 2>&1
@@ -326,6 +338,8 @@ jobs:
           sleep 10
           screencapture -x shots/quicklook-previa.png || true
           kill %1 2>/dev/null || true
+          echo "== log das extensões"
+          log show --last 3m --info --style compact --predicate 'process BEGINSWITH "Mirante" OR eventMessage CONTAINS "Mirante:"' 2>/dev/null | tail -40 || true
           ls shots/*.md.png shots/*.mmd.png >/dev/null 2>&1 || { echo "o Quick Look não gerou miniaturas"; exit 1; }
 
       - uses: actions/upload-artifact@v7

@@ -39,13 +39,16 @@ final class PreviewViewController: NSViewController, QLPreviewingController, WKN
         finish = handler
         var page = URLComponents(url: web.appendingPathComponent("viewer.html"), resolvingAgainstBaseURL: false)!
         page.query = "embed"
+        NSLog("Mirante: abrindo %@ para %@", page.url!.path, url.lastPathComponent)
         webView.loadFileURL(page.url!, allowingReadAccessTo: web)
     }
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         guard let js = script else { return }
         script = nil
-        webView.evaluateJavaScript(js) { _, _ in }
+        webView.evaluateJavaScript(js) { _, error in
+            if let error { NSLog("Mirante: erro no mirante.preview: %@", String(describing: error)) }
+        }
         // o desenho (fórmulas, diagramas) termina logo depois; o Quick Look já pode mostrar
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
             self?.finish?(nil)
@@ -54,6 +57,20 @@ final class PreviewViewController: NSViewController, QLPreviewingController, WKN
     }
 
     func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
+        fail(error)
+    }
+
+    func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
+        fail(error)
+    }
+
+    func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
+        fail(CocoaError(.fileReadUnknown))
+    }
+
+    /// Sem isto o Quick Look esperaria até desistir; com o erro, ele mostra a prévia genérica na hora.
+    private func fail(_ error: Error) {
+        NSLog("Mirante: a página não carregou: %@", String(describing: error))
         finish?(error)
         finish = nil
     }

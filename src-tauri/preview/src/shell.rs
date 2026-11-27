@@ -449,6 +449,33 @@ fn delete_tree(key: &str) {
     }
 }
 
+/// O ProgID que a extensão usa agora (o valor padrão de HKCR\.ext), se houver.
+fn progid(ext: &str) -> Option<String> {
+    let mut buf = [0u16; 260];
+    let mut len = (buf.len() * 2) as u32;
+    let r = unsafe {
+        RegGetValueW(HKEY_CLASSES_ROOT, &HSTRING::from(ext), None, RRF_RT_REG_SZ, None, Some(buf.as_mut_ptr() as *mut c_void), Some(&mut len))
+    };
+    if r.is_err() {
+        return None;
+    }
+    let s = String::from_utf16_lossy(&buf[..(len as usize / 2).saturating_sub(1)]);
+    (!s.is_empty()).then_some(s)
+}
+
+/// Onde o Explorer procura o handler de uma extensão. O ProgID e SystemFileAssociations\.ext vêm antes do tipo
+/// genérico (o .md é "texto"), que no Windows pode apontar para outro handler; a chave da própria extensão fica
+/// por último.
+fn shellex_roots(ext: &str) -> Vec<String> {
+    let mut v = Vec::new();
+    if let Some(p) = progid(ext) {
+        v.push(format!(r"Software\Classes\{p}"));
+    }
+    v.push(format!(r"Software\Classes\SystemFileAssociations\{ext}"));
+    v.push(format!(r"Software\Classes\{ext}"));
+    v
+}
+
 fn clsid_str(g: &GUID) -> String {
     format!("{{{g:?}}}")
 }
@@ -480,10 +507,14 @@ fn register() -> Result<()> {
     set_value(&k, Some("AppID"), PREVHOST_APPID)?;
     set_value(&k, Some("DisplayName"), "Mirante")?;
     for ext in THUMB_EXT {
-        set_value(&format!(r"Software\Classes\{ext}\ShellEx\{SHELLEX_THUMBNAIL}"), None, &thumb)?;
+        for root in shellex_roots(ext) {
+            set_value(&format!(r"{root}\ShellEx\{SHELLEX_THUMBNAIL}"), None, &thumb)?;
+        }
     }
     for ext in PREVIEW_EXT {
-        set_value(&format!(r"Software\Classes\{ext}\ShellEx\{SHELLEX_PREVIEW}"), None, &prev)?;
+        for root in shellex_roots(ext) {
+            set_value(&format!(r"{root}\ShellEx\{SHELLEX_PREVIEW}"), None, &prev)?;
+        }
     }
     set_value(r"Software\Microsoft\Windows\CurrentVersion\PreviewHandlers", Some(&prev), "Mirante")?;
     unsafe { SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, None, None) };
@@ -493,10 +524,14 @@ fn register() -> Result<()> {
 fn unregister() {
     let (thumb, prev) = (clsid_str(&CLSID_THUMBNAIL), clsid_str(&CLSID_PREVIEW));
     for ext in THUMB_EXT {
-        delete_tree(&format!(r"Software\Classes\{ext}\ShellEx\{SHELLEX_THUMBNAIL}"));
+        for root in shellex_roots(ext) {
+            delete_tree(&format!(r"{root}\ShellEx\{SHELLEX_THUMBNAIL}"));
+        }
     }
     for ext in PREVIEW_EXT {
-        delete_tree(&format!(r"Software\Classes\{ext}\ShellEx\{SHELLEX_PREVIEW}"));
+        for root in shellex_roots(ext) {
+            delete_tree(&format!(r"{root}\ShellEx\{SHELLEX_PREVIEW}"));
+        }
     }
     delete_tree(&format!(r"Software\Classes\CLSID\{thumb}"));
     delete_tree(&format!(r"Software\Classes\CLSID\{prev}"));

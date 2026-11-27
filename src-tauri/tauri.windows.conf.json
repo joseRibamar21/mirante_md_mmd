@@ -2,7 +2,7 @@
   "bundle": {
     "resources": {
       "target/release/mirante_preview.dll": "mirante_preview.dll",
-      "../web/**/*": "web/"
+      "../web/": "web/"
     },
     "windows": {
       "nsis": {

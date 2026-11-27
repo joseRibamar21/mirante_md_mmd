@@ -14,4 +14,18 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://joseribamar21.github.io/mirante_md_mmd/en/"/>
     <xhtml:link rel="alternate" hreflang="x-default" href="https://joseribamar21.github.io/mirante_md_mmd/en/"/>
   </url>
+  <url>
+    <loc>https://joseribamar21.github.io/mirante_md_mmd/formatos.html</loc>
+    <lastmod>2026-11-27</lastmod>
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://joseribamar21.github.io/mirante_md_mmd/formatos.html"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://joseribamar21.github.io/mirante_md_mmd/en/formats.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://joseribamar21.github.io/mirante_md_mmd/en/formats.html"/>
+  </url>
+  <url>
+    <loc>https://joseribamar21.github.io/mirante_md_mmd/en/formats.html</loc>
+    <lastmod>2026-11-27</lastmod>
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://joseribamar21.github.io/mirante_md_mmd/formatos.html"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://joseribamar21.github.io/mirante_md_mmd/en/formats.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://joseribamar21.github.io/mirante_md_mmd/en/formats.html"/>
+  </url>
 </urlset>

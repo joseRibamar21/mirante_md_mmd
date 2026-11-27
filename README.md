@@ -243,6 +243,10 @@ Distribuição:
 
 Recursos:
 
+- [ ] **Próximo:** modo de edição visual, no estilo do Notion: escrever direto no documento formatado,
+  com `/` para inserir blocos (título, lista, tabela, citação, aviso, fórmula, diagrama), barra de formatação
+  ao selecionar texto e arrastar blocos para reordenar. O arquivo continua sendo Markdown puro, e o editor de
+  código segue disponível para quem prefere
 - [x] LaTeX: prévia de `.tex` e exportação do Markdown para `.tex`
 - [ ] Prévia no gerenciador de arquivos: miniaturas no Linux, painel de visualização do Explorer no Windows
   e Quick Look no Mac

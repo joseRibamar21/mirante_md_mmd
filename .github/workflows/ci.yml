@@ -57,7 +57,10 @@ jobs:
       - name: Prévia do Explorer (Windows)
         if: runner.os == 'Windows'
         working-directory: src-tauri
-        run: cargo build --release -p mirante-preview --example teste-explorer
+        shell: bash
+        run: |
+          cargo build --release -p mirante-preview --lib --example teste-explorer
+          ls -l target/release/mirante_preview.dll target/release/examples/teste-explorer.exe
 
       - name: Testes do Rust
         working-directory: src-tauri

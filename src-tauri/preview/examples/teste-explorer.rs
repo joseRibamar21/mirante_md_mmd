@@ -45,7 +45,8 @@ mod imp {
         let mut falhas = 0;
         // controle: um PNG, que o próprio Windows sabe miniaturizar. Se nem ele sai pelo Explorer, a máquina não
         // faz miniaturas (o Windows Server do CI) e a falha do nosso pelo Explorer não diz nada sobre a DLL.
-        let controle = out.join("controle.png");
+        // o Explorer só aceita caminho completo
+        let controle = std::path::absolute(out.join("controle.png")).unwrap_or_else(|_| out.join("controle.png"));
         if let Some(mut p) = Pixmap::new(64, 64) {
             p.fill(resvg::tiny_skia::Color::from_rgba8(47, 109, 246, 255));
             save(&p, &controle);

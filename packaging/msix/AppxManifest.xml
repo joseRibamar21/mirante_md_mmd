@@ -79,6 +79,24 @@
           </uap:FileTypeAssociation>
         </uap:Extension>
         <uap:Extension Category="windows.fileTypeAssociation">
+          <uap:FileTypeAssociation Name="typst">
+            <uap:DisplayName>Typst</uap:DisplayName>
+            <uap:Logo>Assets\StoreLogo.png</uap:Logo>
+            <uap:SupportedFileTypes>
+              <uap:FileType>.typ</uap:FileType>
+            </uap:SupportedFileTypes>
+          </uap:FileTypeAssociation>
+        </uap:Extension>
+        <uap:Extension Category="windows.fileTypeAssociation">
+          <uap:FileTypeAssociation Name="bibtex">
+            <uap:DisplayName>BibTeX</uap:DisplayName>
+            <uap:Logo>Assets\StoreLogo.png</uap:Logo>
+            <uap:SupportedFileTypes>
+              <uap:FileType>.bib</uap:FileType>
+            </uap:SupportedFileTypes>
+          </uap:FileTypeAssociation>
+        </uap:Extension>
+        <uap:Extension Category="windows.fileTypeAssociation">
           <uap:FileTypeAssociation Name="text">
             <uap:DisplayName>Texto</uap:DisplayName>
             <uap:Logo>Assets\StoreLogo.png</uap:Logo>

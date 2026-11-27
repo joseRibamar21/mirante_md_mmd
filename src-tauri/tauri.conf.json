@@ -63,7 +63,13 @@
         "name": "Mermaid",
         "description": "Diagrama Mermaid",
         "role": "Editor",
-        "mimeType": "text/vnd.mermaid"
+        "mimeType": "text/vnd.mermaid",
+        "exportedType": {
+          "identifier": "io.github.mirante.mermaid",
+          "conformsTo": [
+            "public.plain-text"
+          ]
+        }
       },
       {
         "ext": [
@@ -72,7 +78,13 @@
         "name": "Graphviz",
         "description": "Grafo Graphviz",
         "role": "Editor",
-        "mimeType": "text/vnd.graphviz"
+        "mimeType": "text/vnd.graphviz",
+        "exportedType": {
+          "identifier": "io.github.mirante.graphviz",
+          "conformsTo": [
+            "public.plain-text"
+          ]
+        }
       },
       {
         "ext": [
@@ -84,7 +96,45 @@
         "description": "Documento LaTeX",
         "role": "Viewer",
         "rank": "Alternate",
-        "mimeType": "text/x-tex"
+        "mimeType": "text/x-tex",
+        "exportedType": {
+          "identifier": "org.tug.tex",
+          "conformsTo": [
+            "public.plain-text"
+          ]
+        }
+      },
+      {
+        "ext": [
+          "typ"
+        ],
+        "name": "Typst",
+        "description": "Documento Typst",
+        "role": "Viewer",
+        "rank": "Alternate",
+        "mimeType": "text/x-typst",
+        "exportedType": {
+          "identifier": "io.github.mirante.typst",
+          "conformsTo": [
+            "public.plain-text"
+          ]
+        }
+      },
+      {
+        "ext": [
+          "bib"
+        ],
+        "name": "BibTeX",
+        "description": "Bibliografia BibTeX",
+        "role": "Viewer",
+        "rank": "Alternate",
+        "mimeType": "text/x-bibtex",
+        "exportedType": {
+          "identifier": "io.github.mirante.bibtex",
+          "conformsTo": [
+            "public.plain-text"
+          ]
+        }
       },
       {
         "ext": [
@@ -102,6 +152,7 @@
         "desktopTemplate": "../packaging/linux/mirante.desktop.hbs",
         "files": {
           "/usr/share/mime/packages/mirante-mermaid.xml": "../packaging/linux/mirante-mermaid.xml",
+          "/usr/share/thumbnailers/mirante.thumbnailer": "../packaging/linux/mirante.thumbnailer",
           "/usr/share/metainfo/io.github.mirante.Viewer.metainfo.xml": "../packaging/linux/io.github.mirante.Viewer.metainfo.xml",
           "/usr/share/applications/io.github.mirante.Viewer.desktop": "../packaging/linux/io.github.mirante.Viewer.desktop"
         }

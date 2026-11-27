@@ -15,6 +15,8 @@
   };
   /* viewer.html?editor=1 → janela separada só com o editor; o texto "de verdade" fica na janela principal */
   const EDITOR_ONLY = new URLSearchParams(location.search).has("editor") || !!window.MIRANTE_EDITOR_ONLY;
+  // embutido no gerenciador de arquivos (painel do Explorer, Quick Look do Mac): só leitura, sem barras
+  const EMBED = new URLSearchParams(location.search).has("embed");
 
   const DEFAULTS = {
     layout: "both", levelGap: 56, siblingGap: 14, cardWidth: 220,
@@ -51,14 +53,20 @@
     "Mapa mental dos títulos": "Headings mind map", "Gerar material com IA": "Generate material with AI",
     "Gerar material de estudo com IA": "Generate study material with AI", "Copiar prompt": "Copy prompt", "Copiado": "Copied",
     "Copiar tabela como LaTeX": "Copy table as LaTeX", "Tabela copiada como LaTeX": "Table copied as LaTeX",
-    "Não foi possível copiar a tabela": "Could not copy the table", "diagrama": "diagram", "documento": "document",
+    "Não foi possível copiar a tabela": "Could not copy the table",
+    "A prévia do Typst só funciona no app.": "The Typst preview only works in the app.",
+    "Apresentar (Ctrl Shift P)": "Present (Ctrl Shift P)", "Sair da apresentação (Esc)": "Exit presentation (Esc)",
+    "O modo apresentação é para Markdown, LaTeX e Typst.": "Presentation mode is for Markdown, LaTeX and Typst.",
+    "Nada para apresentar.": "Nothing to present.",
+    "linha {l}, coluna {c}": "line {l}, column {c}", "diagrama": "diagram", "documento": "document",
     "Copie um prompt, cole no Claude, ChatGPT ou Gemini junto com o seu conteúdo (texto, PDF ou só o assunto) e abra aqui o arquivo que ele devolver.":
       "Copy a prompt, paste it into Claude, ChatGPT or Gemini along with your content (text, PDF or just the topic) and open the file it returns here.",
     "Guia de formato completo": "Full format guide", "Copiar guia": "Copy guide", "Ver no site": "View on the website",
     "Para colar nas instruções de um Projeto do Claude ou nas instruções personalizadas do ChatGPT: tudo o que o Mirante desenha e os limites. Assim todo material já sai pronto.":
       "To paste into a Claude Project's instructions or ChatGPT's custom instructions: everything Mirante renders and its limits, so every answer comes out ready.", "Nota": "Note", "Dica": "Tip", "Importante": "Important",
     "Atenção": "Warning", "Cuidado": "Caution", "Exemplo": "Example", "Pergunta": "Question", "Resumo": "Summary",
-    "Certo": "Success", "Citação": "Quote", "Clique num tópico para ir até ele": "Click a topic to jump to it", "Documento": "Document",
+    "Certo": "Success", "Citação": "Quote", "Feito": "Done", "A fazer": "To do", "Ajuda": "Help", "Falha": "Failure",
+    "Faltando": "Missing", "Clique num tópico para ir até ele": "Click a topic to jump to it", "Documento": "Document",
     "Afastar": "Zoom out", "Aproximar": "Zoom in", "Mover para a esquerda": "Move left", "Mover para a direita": "Move right",
     "Voltar ao tamanho original": "Reset view", "Fechar (Esc)": "Close (Esc)",
     "Não foi possível atualizar o diagrama no arquivo.": "Could not update the diagram in the file.",
@@ -127,6 +135,7 @@
 
   /* ---------------- ícones ---------------- */
   const P = {
+    play: '<path d="M8 5.5v13l10.5-6.5z"/>',
     code: '<path d="M8 7l-5 5 5 5M16 7l5 5-5 5M13.5 4l-3 16"/>',
     both: '<rect x="8.5" y="10" width="7" height="4" rx="2"/><path d="M8.5 12c-2 0-2-5-4.5-5M8.5 12c-2 0-2 5-4.5 5M15.5 12c2 0 2-5 4.5-5M15.5 12c2 0 2 5 4.5 5"/>',
     right: '<rect x="2.5" y="10" width="6" height="4" rx="2"/><path d="M8.5 12c3 0 3-6 6-6h6M8.5 12h12M8.5 12c3 0 3 6 6 6h6"/>',
@@ -245,6 +254,14 @@
     // com forceKeepAttr o DOMPurify deixa o atributo como está no nó (não reaplica attrValue)
     if (url) { node.setAttribute(data.attrName, url); data.forceKeepAttr = true; }
   });
+  // <use> (as letras do SVG do Typst) só pode apontar para dentro do próprio SVG: nada de buscar fora
+  DOMPurify.addHook("afterSanitizeAttributes", (node) => {
+    if (node.nodeName !== "use") return;
+    for (const a of ["href", "xlink:href"]) {
+      const v = node.getAttribute(a);
+      if (v != null && !v.trim().startsWith("#")) node.removeAttribute(a);
+    }
+  });
   function setMode(kind) {
     body.classList.remove("mode-boot", "mode-welcome", "mode-md", "mode-mmd", "mode-txt");
     body.classList.add("mode-" + (kind || "welcome"));
@@ -291,6 +308,136 @@
   /* fórmulas: $...$ no texto, $$...$$ em bloco e blocos ```math; quem desenha é o KaTeX, carregado só
    * quando o documento tem fórmula. "$5 e $10" continua texto: o $ de abertura precisa de algo colado
    * depois, o de fechamento de algo colado antes, e não pode vir seguido de número. */
+  /* ---------------- sintaxe do Obsidian ----------------
+   * Notas de rodapé ([^1] e ^[inline]), links [[nota]], [[nota|apelido]], [[nota#seção]], imagens ![[foto.png|300]],
+   * ==destaque==, %%comentário%%, #tags e ^ids de bloco. As notas de rodapé são numeradas na ordem em que
+   * aparecem e listadas no fim (fnState vale durante um marked.parse). */
+  let fnState = null;
+  const IMG_EXT = /\.(png|jpe?g|gif|svg|webp|bmp|avif)$/i;
+  function wikiHref(target) {
+    const [path, frag] = target.split("#");
+    const anchor = frag ? "#" + slugify(frag) : "";
+    if (!path.trim()) return anchor;
+    const file = /\.[A-Za-z0-9]{1,5}$/.test(path.trim()) ? path.trim() : path.trim() + ".md";
+    return file.split("/").map(encodeURIComponent).join("/") + anchor;
+  }
+  marked.use({
+    extensions: [
+      {
+        name: "footnoteDef", level: "block",
+        start(src) { const i = src.search(/^\[\^[^\]\s]+\]:/m); return i < 0 ? undefined : i; },
+        tokenizer(src) {
+          const m = /^\[\^([^\]\s]+)\]:[ \t]*([^\n]*(?:\n(?:[ \t]{2,}[^\n]*|[ \t]*(?=\n[ \t]{2,})))*)(?:\n|$)/.exec(src);
+          if (!m) return;
+          const text = m[2].replace(/^[ \t]{2,4}/gm, "");
+          return { type: "footnoteDef", raw: m[0], id: m[1], tokens: this.lexer.blockTokens(text, []) };
+        },
+        renderer(t) { if (fnState) fnState.defs.set(t.id, this.parser.parse(t.tokens)); return ""; },
+      },
+      {
+        name: "footnoteRef", level: "inline",
+        start(src) { const i = src.search(/\[\^|\^\[/); return i < 0 ? undefined : i; },
+        tokenizer(src) {
+          let m = /^\[\^([^\]\s]+)\]/.exec(src);
+          if (m) return { type: "footnoteRef", raw: m[0], id: m[1] };
+          m = /^\^\[([^\]\n]+)\]/.exec(src);
+          if (m) return { type: "footnoteRef", raw: m[0], id: null, tokens: this.lexer.inlineTokens(m[1]) };
+        },
+        renderer(t) {
+          if (!fnState) return "";
+          let id = t.id;
+          if (!id) { id = "\u0000inline" + fnState.order.length; fnState.defs.set(id, `<p>${this.parser.parseInline(t.tokens)}</p>`); }
+          if (!fnState.order.includes(id)) fnState.order.push(id);
+          const n = fnState.order.indexOf(id) + 1;
+          return `<sup class="fn-ref"><a href="#fn-${n}" id="fnref-${n}-${fnState.refs++}">${n}</a></sup>`;
+        },
+      },
+      {
+        name: "wikilink", level: "inline",
+        start(src) { const i = src.search(/!?\[\[/); return i < 0 ? undefined : i; },
+        tokenizer(src) {
+          const m = /^(!?)\[\[([^\]\n|]+?)(?:\|([^\]\n]*))?\]\]/.exec(src);
+          if (m) return { type: "wikilink", raw: m[0], embed: !!m[1], target: m[2].trim(), alias: (m[3] || "").trim() };
+        },
+        renderer(t) {
+          const label = t.alias || t.target.replace(/#(.+)$/, " › $1").replace(/^ › /, "");
+          if (t.embed && IMG_EXT.test(t.target.split("#")[0])) {
+            const w = /^\d+(x\d+)?$/.test(t.alias) ? ` width="${t.alias.split("x")[0]}"` : "";
+            return `<img src="${escapeHtml(wikiHref(t.target))}" alt="${escapeHtml(t.target)}"${w}>`;
+          }
+          return `<a class="wikilink${t.embed ? " embed" : ""}" href="${escapeHtml(wikiHref(t.target))}">${t.embed ? "↪ " : ""}${escapeHtml(t.embed ? t.target : label)}</a>`;
+        },
+      },
+      {
+        name: "highlight", level: "inline",
+        start(src) { const i = src.indexOf("=="); return i < 0 ? undefined : i; },
+        tokenizer(src) {
+          const m = /^==(?=\S)([^\n]*?\S)==/.exec(src);
+          if (m) return { type: "highlight", raw: m[0], tokens: this.lexer.inlineTokens(m[1]) };
+        },
+        renderer(t) { return `<mark>${this.parser.parseInline(t.tokens)}</mark>`; },
+      },
+      {
+        name: "obsComment", level: "block",
+        start(src) { const i = src.search(/^%%/m); return i < 0 ? undefined : i; },
+        tokenizer(src) { const m = /^%%[\s\S]*?%%[ \t]*(?:\n|$)/.exec(src); if (m) return { type: "obsComment", raw: m[0] }; },
+        renderer() { return ""; },
+      },
+      {
+        name: "obsCommentInline", level: "inline",
+        start(src) { const i = src.indexOf("%%"); return i < 0 ? undefined : i; },
+        tokenizer(src) { const m = /^%%[\s\S]*?%%/.exec(src); if (m) return { type: "obsCommentInline", raw: m[0] }; },
+        renderer() { return ""; },
+      },
+      {
+        // #tag: precisa de uma letra (#12 não é tag) e vir depois de espaço ou no começo da linha
+        name: "tag", level: "inline",
+        start(src) { const m = /(^|\s)#[\p{L}\p{N}_\/-]*\p{L}/u.exec(src); return m ? m.index + m[1].length : undefined; },
+        tokenizer(src) {
+          const m = /^#([\p{L}\p{N}_\/-]*\p{L}[\p{L}\p{N}_\/-]*)/u.exec(src);
+          if (m) return { type: "tag", raw: m[0], name: m[1] };
+        },
+        renderer(t) { return `<span class="tag">#${escapeHtml(t.name)}</span>`; },
+      },
+      {
+        // ^id no fim da linha marca o bloco para links; não aparece
+        name: "blockId", level: "inline",
+        start(src) { const i = src.search(/ \^[A-Za-z0-9-]+[ \t]*(?:\n|$)/); return i < 0 ? undefined : i; },
+        tokenizer(src) { const m = /^ \^[A-Za-z0-9-]+(?=[ \t]*(?:\n|$))/.exec(src); if (m) return { type: "blockId", raw: m[0] }; },
+        renderer() { return ""; },
+      },
+    ],
+  });
+  function footnotesHtml() {
+    if (!fnState || !fnState.order.length) return "";
+    const items = fnState.order.map((id, k) => `<li id="fn-${k + 1}">${(fnState.defs.get(id) || `<p>[^${escapeHtml(id)}]</p>`)
+      .replace(/<\/p>\s*$/, ` <a class="fn-back" href="#fnref-${k + 1}-0">↩</a></p>`)}</li>`).join("");
+    return `<section class="footnotes"><hr><ol>${items}</ol></section>`;
+  }
+
+  /* citações estilo Pandoc: [@chave], [@a; @b], [@chave, p. 10], [-@chave] (só o ano) */
+  const CITE_ITEM = /^\s*(-?)@([\w:.#$%&+?<>~\/-]+)\s*(?:,\s*(.*?))?\s*$/;
+  marked.use({
+    extensions: [{
+      name: "citation", level: "inline",
+      start(src) { const i = src.search(/\[-?@/); return i < 0 ? undefined : i; },
+      tokenizer(src) {
+        const m = /^\[(-?@[^\]\n]+)\]/.exec(src);
+        if (!m || src[m[0].length] === "(") return;
+        const items = [];
+        for (const part of m[1].split(";")) {
+          const it = CITE_ITEM.exec(part);
+          if (!it) return;
+          items.push({ key: it[2], note: it[3] || "", suppress: !!it[1] });
+        }
+        return { type: "citation", raw: m[0], items };
+      },
+      renderer(t) {
+        if (!mdCiter) return escapeHtml(t.raw);
+        return `<span class="cite">${escapeHtml(mdCiter.cite(t.items, { suppressAuthor: t.items[0].suppress }))}</span>`;
+      },
+    }],
+  });
   marked.use({
     extensions: [
       {
@@ -623,7 +770,9 @@
     caution: ["caution", "Cuidado"], danger: ["caution", "Cuidado"], error: ["caution", "Cuidado"],
     example: ["example", "Exemplo"], question: ["question", "Pergunta"], faq: ["question", "Pergunta"],
     summary: ["summary", "Resumo"], abstract: ["summary", "Resumo"], tldr: ["summary", "Resumo"],
-    success: ["tip", "Certo"], check: ["tip", "Certo"], quote: ["note", "Citação"],
+    success: ["tip", "Certo"], check: ["tip", "Certo"], done: ["tip", "Feito"], quote: ["note", "Citação"], cite: ["note", "Citação"],
+    todo: ["note", "A fazer"], help: ["question", "Ajuda"], bug: ["caution", "Bug"], failure: ["caution", "Falha"],
+    fail: ["caution", "Falha"], missing: ["caution", "Faltando"],
   };
   const CALLOUT_ICON = {
     note: '<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5M12 7.6h.01"/>',
@@ -726,17 +875,64 @@
     });
   }, true);
   /* o Markdown que está na tela: o próprio texto, ou o .tex convertido por tex.js */
-  let texCache = { text: null, md: "" };
+  let texCache = { text: null, md: "", v: -1 };
   function mdSource() {
-    if (S.lang !== "tex") return S.text;
-    if (texCache.text !== S.text) {
+    if (S.lang !== "tex" && S.lang !== "bib") return S.text;
+    if (texCache.text !== S.text || texCache.v !== bibs.v || texCache.lang !== S.lang) {
       let md;
-      try { md = window.MiranteTex.toMarkdown(S.text, { lang: LANG }); }
-      catch (err) { md = "```\n" + String((err && err.message) || err) + "\n```"; }
-      texCache = { text: S.text, md };
+      try {
+        md = S.lang === "bib"
+          ? window.MiranteBib.toMarkdown(S.text, { lang: LANG, name: (S.path || "").split(/[\\/]/).pop() })
+          : window.MiranteTex.toMarkdown(S.text, { lang: LANG, bib: bibEntries(texBibNames(S.text)) });
+      } catch (err) { md = "```\n" + String((err && err.message) || err) + "\n```"; }
+      texCache = { text: S.text, md, v: bibs.v, lang: S.lang };
     }
     return texCache.md;
   }
+
+  /* ---------------- bibliografia (.bib) ----------------
+   * O .bib citado por um .tex (\bibliography, \addbibresource) ou por um .md (bibliography: no cabeçalho) é
+   * lido ao lado do documento, pelo mesmo caminho das imagens; quando chega, o documento é redesenhado. */
+  const bibs = { files: new Map(), v: 0 };
+  function bibEntries(names) {
+    const out = [];
+    for (const n of names) {
+      const f = bibs.files.get(n);
+      if (f === undefined) loadBib(n);
+      else if (f && f.entries) out.push(...f.entries);
+    }
+    return out;
+  }
+  function loadBib(name) {
+    bibs.files.set(name, "loading");
+    fetch(new URL(name, document.baseURI)).then((r) => (r.ok ? r.text() : Promise.reject(new Error(r.status))))
+      .then((text) => { bibs.files.set(name, { text, entries: window.MiranteBib.parse(text).entries }); })
+      .catch(() => bibs.files.set(name, "missing"))
+      .finally(() => { bibs.v++; if (S.kind === "md") draw(); });
+  }
+  const withBib = (n) => (/\.bib$/i.test(n) ? n : n + ".bib");
+  function texBibNames(text) {
+    const names = [];
+    for (const m of text.matchAll(/\\bibliography\{([^}]*)\}/g)) names.push(...m[1].split(",").map((x) => withBib(x.trim())).filter((x) => x !== ".bib"));
+    for (const m of text.matchAll(/\\addbibresource(?:\[[^\]]*\])?\{([^}]*)\}/g)) names.push(m[1].trim());
+    return [...new Set(names)];
+  }
+  // cabeçalho do .md: "bibliography: refs.bib" ou uma lista "- a.bib"; "nocite: '@*'"; "citation-style: numeric"
+  function frontMatter(text) {
+    const m = FRONT_MATTER.exec(text);
+    const out = { bibliography: [], nocite: false, numeric: false };
+    if (!m) return out;
+    const fm = m[0];
+    const b = /^bibliography:[ \t]*(.*)$/m.exec(fm);
+    if (b) {
+      if (b[1].trim()) out.bibliography.push(...b[1].replace(/^\[|\]$/g, "").split(",").map((x) => x.trim().replace(/^["']|["']$/g, "")).filter(Boolean));
+      else for (const l of fm.slice(b.index + b[0].length).split("\n")) { const it = /^\s+-\s*(.+)$/.exec(l); if (!it) break; out.bibliography.push(it[1].trim().replace(/^["']|["']$/g, "")); }
+    }
+    out.nocite = /^nocite:.*@\*/m.test(fm);
+    out.numeric = /^citation-style:\s*["']?num/m.test(fm);
+    return out;
+  }
+  let mdCiter = null;                    // quem numera as citações [@chave] durante um marked.parse
   /* imagem do .tex sem extensão (\includegraphics{foto}): tenta as que o LaTeX procuraria */
   const IMG_TRY = ["png", "jpg", "jpeg", "svg", "gif", "webp"];
   function texImages(root) {
@@ -757,8 +953,64 @@
       next();
     });
   }
+  /* ---------------- Typst ----------------
+   * Quem compila é o lado nativo (o compilador do Typst dentro do app): a página manda o texto e recebe as
+   * páginas em SVG. Com erro, as últimas páginas válidas ficam na tela e o erro aparece em cima. */
+  let typSeq = 0, typTimer = 0;
+  function renderTypst() {
+    if (S.typPages) {                     // embutido: as páginas já vêm compiladas pelo lado nativo
+      E.doc.innerHTML = '<div class="typ-msg"></div><div class="typ-pages"></div>';
+      typstResult({ seq: ++typSeq, pages: S.typPages });
+      return;
+    }
+    if (!IN_APP) { E.doc.innerHTML = errorBox("Typst", tr("A prévia do Typst só funciona no app.")); return; }
+    if (!E.doc.querySelector(".typ-pages")) E.doc.innerHTML = '<div class="typ-msg"></div><div class="typ-pages"></div>';
+    clearTimeout(typTimer);
+    // enquanto digita, espera uma pausa curta: cada compilação descarta a anterior
+    typTimer = setTimeout(() => post({ type: "typst", text: S.text, seq: ++typSeq }), S.typing ? 160 : 0);
+  }
+  function typDiag(list, error) {
+    return list.map((d) => {
+      const where = d.line ? (d.file ? `${d.file}:` : "") + tr("linha {l}, coluna {c}", { l: d.line, c: d.col }) : "";
+      const hints = (d.hints || []).map((h) => `<li>${escapeHtml(h)}</li>`).join("");
+      const go = d.line && !d.file ? ` data-line="${d.line - 1}"` : "";
+      return `<div class="typ-diag${error ? "" : " warn"}"${go}>${where ? `<b>${escapeHtml(where)}</b>` : ""}` +
+        `<span>${escapeHtml(d.message)}</span>${hints ? `<ul>${hints}</ul>` : ""}</div>`;
+    }).join("");
+  }
+  function typstResult(r) {
+    if (r.seq !== typSeq || S.lang !== "typ") return;
+    const msg = E.doc.querySelector(".typ-msg"), box = E.doc.querySelector(".typ-pages");
+    if (!msg || !box) return;
+    if (r.errors) {
+      msg.innerHTML = typDiag(r.errors, true) + (box.children.length ? `<p class="typ-stale">${tr("(mostrando a última versão válida)")}</p>` : "");
+      return;
+    }
+    msg.innerHTML = typDiag(r.warnings || [], false);
+    setTimeout(refreshSlides);
+    box.innerHTML = r.pages.map((svg) => `<div class="typ-page">${DOMPurify.sanitize(svg, { USE_PROFILES: { svg: true, svgFilters: true }, ADD_TAGS: ["use"] })}</div>`).join("");
+  }
+  E.doc.addEventListener("click", (e) => {
+    const d = e.target.closest(".typ-diag[data-line]");
+    if (!d) return;
+    if (!S.editorOpen) toggleEditor(true);
+    revealLine(+d.dataset.line);
+    E.src.focus();
+  });
+
   async function renderMarkdown(my) {
-    const raw = marked.parse(mdSource().replace(FRONT_MATTER, ""));
+    if (S.lang === "typ") return renderTypst();
+    const fm = S.lang ? null : frontMatter(S.text);
+    const entries = fm && fm.bibliography.length ? bibEntries(fm.bibliography) : [];
+    mdCiter = entries.length ? new MiranteBib.Citer(entries, { lang: LANG, style: fm.numeric ? "numeric" : "authoryear" }) : null;
+    let raw;
+    fnState = { defs: new Map(), order: [], refs: 0 };
+    try {
+      raw = marked.parse(mdSource().replace(FRONT_MATTER, ""));
+      raw += footnotesHtml();
+      // as referências citadas vão no fim, como na exportação para LaTeX
+      if (mdCiter) { const list = mdCiter.list({ all: fm.nocite }); if (list) raw += marked.parse(list); }
+    } finally { mdCiter = null; fnState = null; }
     // redesenhar (tema, digitação, arquivo salvo) não fecha as respostas que a pessoa abriu
     const openAnswers = S.answersFor === S.path ? [...E.doc.querySelectorAll("details")].map((d) => d.open) : [];
     S.answersFor = S.path;
@@ -918,6 +1170,7 @@
       await renderMarkdown(my);
       if (my !== S.seq) return;
       E.docScroll.scrollTop = o.fit ? 0 : y;
+      if (S.lang !== "typ") refreshSlides();
     } else if (S.kind === "mmd") {
       const t0 = performance.now();
       const r = await renderDiagram(my, o.live, o.force);
@@ -1625,6 +1878,7 @@
       if (study) h += SEP + study;
     }
     h += SEP;
+    if (S.kind === "md" && S.lang !== "bib") h += btn("present", "play", "Apresentar (Ctrl Shift P)");
     if (S.kind === "mmd" && S.parsed) h += btn("undo", "undo", "Desfazer (Ctrl Z)") + btn("redo", "redo", "Refazer (Ctrl Shift Z)");
     h += btn("theme", S.theme === "dark" ? "sun" : "moon", S.theme === "dark" ? "Tema claro (Ctrl D)" : "Tema escuro (Ctrl D)");
     E.dock.innerHTML = h;
@@ -1664,6 +1918,7 @@
     spacing: () => (S.popover ? closePopover() : openPopover("spacing")),
     answers: () => toggleAnswers(),
     headingsMap: () => openHeadingsMap(),
+    present: () => present(true),
     zoomIn: () => zoomBy(1), zoomOut: () => zoomBy(-1), zoomReset: () => zoomBy(0),
     fit: () => fit(true), undo: () => undo(), redo: () => redo(),
     theme: () => { const t = (S.themeNext || S.theme) === "dark" ? "light" : "dark"; setTheme(t); post({ type: "theme", value: t }); },
@@ -1874,7 +2129,7 @@
   /* ---------------- LaTeX ----------------
    * latex.js converte o texto; aqui ficam o botão de copiar tabela e os diagramas da exportação. */
   function addTableButtons() {
-    if (!window.MiranteLatex) return;
+    if (!window.MiranteLatex || S.lang === "typ") return;
     const els = E.doc.querySelectorAll("table");
     // só as tabelas do Markdown têm token; com <table> em HTML no meio a ordem não bate, e o botão não aparece
     if (!els.length || els.length !== MiranteLatex.tables(mdSource()).length) return;
@@ -1943,12 +2198,213 @@
     return { figures, files };
   }
   /* para a camada nativa: { tex, files: [{name, svg}] }, ou null fora de um .md */
-  async function getLatex() {
-    if (S.kind !== "md" || S.lang === "tex" || !window.MiranteLatex) return null;
+  async function getLatex(o = {}) {
+    if (S.kind !== "md" || S.lang || !window.MiranteLatex) return null;
+    const fm = frontMatter(S.text);
     const name = (S.path || "").split(/[\\/]/).pop();
     const stem = name.replace(/\.[^.]+$/, "").replace(/[^\p{L}\p{N}_-]+/gu, "-") || tr("documento");
     const { figures, files } = await latexDiagrams(stem);
-    return { tex: MiranteLatex.fromMarkdown(S.text, { lang: LANG, figures, source: name || "Markdown" }), files };
+    // o .bib citado vai junto, ao lado do .tex (só os que estão na mesma pasta do .md)
+    // o .bib da mesma pasta vai junto, ao lado do .tex; de outra pasta, o \bibliography aponta para lá
+    for (const n of fm.bibliography) {
+      const f = bibs.files.get(n);
+      if (f && f.text && !/[\\/]/.test(n)) files.push({ name: n, svg: f.text });
+    }
+    const tex = MiranteLatex.fromMarkdown(S.text, { lang: LANG, figures, source: name || "Markdown",
+      bib: fm.bibliography.map((n) => n.replace(/\.bib$/i, "")), nocite: fm.nocite, numeric: fm.numeric, abnt: !!o.abnt });
+    return { tex, files };
+  }
+
+  /* ---------------- modo apresentação ----------------
+   * O documento vira slides em tela cheia: --- separa os slides (sem nenhum, cada ## começa um). Cada slide usa
+   * o mesmo desenho do documento: fórmulas, diagramas, caixas, código e imagens. No Typst, cada página é um slide
+   * (serve para os modelos de slides do Typst); no LaTeX, cada frame do Beamer. */
+  const PR = { on: false, i: 0, slides: [], el: null, seq: 0 };
+  function slidesOf(md) {
+    const tokens = marked.lexer(md.replace(FRONT_MATTER, ""));
+    const hasHr = tokens.some((t) => t.type === "hr");
+    const out = [];
+    let cur = [];
+    for (const t of tokens) {
+      const starts = hasHr ? t.type === "hr" : t.type === "heading" && t.depth <= 2 && cur.some((x) => x.type !== "space");
+      if (starts) { out.push(cur); cur = []; if (hasHr) continue; }
+      cur.push(t);
+    }
+    out.push(cur);
+    return out.map((ts) => ts.map((t) => t.raw).join("")).filter((x) => x.trim());
+  }
+  function collectSlides() {
+    if (S.lang === "typ") return [...E.doc.querySelectorAll(".typ-page")].map((p) => ({ html: p.innerHTML, page: true }));
+    return slidesOf(mdSource()).map((md) => ({ md }));
+  }
+  function present(on = true) {
+    if (!on) {
+      if (!PR.on) return;
+      PR.on = false; PR.el.hidden = true; body.classList.remove("presenting");
+      post({ type: "fullscreen", on: false });
+      return;
+    }
+    if (S.kind !== "md" || S.lang === "bib") { toast(tr("O modo apresentação é para Markdown, LaTeX e Typst.")); return; }
+    PR.slides = collectSlides();
+    if (!PR.slides.length) { toast(tr("Nada para apresentar.")); return; }
+    if (!PR.el) {
+      PR.el = document.createElement("div");
+      PR.el.id = "present";
+      PR.el.innerHTML = '<div class="pr-stage"><div class="pr-slide markdown-body"></div></div>' +
+        '<div class="pr-progress"><i></i></div><div class="pr-count"></div>' +
+        `<button class="pr-close icon-btn small" title="${tr("Sair da apresentação (Esc)")}">${icon("close")}</button>`;
+      document.body.appendChild(PR.el);
+      PR.el.addEventListener("click", (e) => {
+        if (e.target.closest(".pr-close")) return present(false);
+        if (e.target.closest("a, button, summary, details")) return;
+        showSlide(PR.i + (e.clientX < innerWidth / 3 ? -1 : 1));
+      });
+      addEventListener("resize", () => PR.on && fitStage());
+    }
+    PR.on = true; PR.el.hidden = false; body.classList.add("presenting");
+    closePopover();
+    post({ type: "fullscreen", on: true });
+    fitStage();
+    showSlide(Math.min(PR.i, PR.slides.length - 1));
+  }
+  function fitStage() {
+    const st = PR.el.querySelector(".pr-stage");
+    const k = Math.min(innerWidth / 1280, innerHeight / 720);
+    st.style.transform = `translate(-50%, -50%) scale(${k})`;
+  }
+  // conteúdo maior que o slide diminui até caber (até a metade); menor fica como está
+  function fitSlide(box) {
+    box.style.setProperty("--pr-zoom", 1);
+    const inner = box.firstElementChild ? box : null;
+    if (!inner || box.classList.contains("pr-page")) return;
+    const need = box.scrollHeight, room = box.clientHeight;
+    if (need > room + 2) box.style.setProperty("--pr-zoom", Math.max(0.5, room / need).toFixed(3));
+  }
+  async function showSlide(i) {
+    if (!PR.on) return;
+    PR.i = clamp(i, 0, PR.slides.length - 1);
+    const my = ++PR.seq, s = PR.slides[PR.i];
+    const box = PR.el.querySelector(".pr-slide");
+    box.classList.toggle("pr-page", !!s.page);
+    box.classList.remove("pr-cover");
+    if (s.page) box.innerHTML = s.html;
+    else {
+      box.innerHTML = `<div class="pr-content">${DOMPurify.sanitize(marked.parse(s.md), { ADD_ATTR: ["data-mermaid", "data-dot", "data-tex", "target"] })}</div>`;
+      const c = box.firstElementChild;
+      applyCallouts(c);
+      if (S.lang === "tex") texImages(c);
+      await renderMath(c, S.seq);
+      for (const el of c.querySelectorAll(".mermaid-block")) {
+        const r = el.dataset.dot != null ? await dotSvg(decodeURIComponent(el.dataset.dot)) : await mermaidSvg(decodeURIComponent(el.dataset.mermaid || ""), S.seq);
+        if (my !== PR.seq) return;
+        el.innerHTML = r.error ? errorBox(tr("Erro no diagrama Mermaid"), r.error) : r.svg;
+      }
+      if (my !== PR.seq) return;
+      // capa: só títulos e um ou dois parágrafos curtos ficam no centro
+      const kids = [...c.children];
+      box.classList.toggle("pr-cover", kids.length > 0 && kids.length <= 4 && /^H[12]$/.test(kids[0].tagName) &&
+        kids.every((k) => /^H[1-3]$/.test(k.tagName) || (k.tagName === "P" && k.textContent.length < 160)));
+      c.querySelectorAll("img").forEach((img) => img.addEventListener("load", () => fitSlide(box), { once: true }));
+    }
+    PR.el.querySelector(".pr-count").textContent = `${PR.i + 1} / ${PR.slides.length}`;
+    PR.el.querySelector(".pr-progress i").style.width = ((PR.i + 1) / PR.slides.length) * 100 + "%";
+    fitSlide(box);
+  }
+  // o arquivo mudou (salvo aqui ou em outro programa) durante a apresentação: os slides acompanham
+  function refreshSlides() {
+    if (!PR.on) return;
+    PR.slides = collectSlides();
+    if (!PR.slides.length) return present(false);
+    showSlide(Math.min(PR.i, PR.slides.length - 1));
+  }
+  document.addEventListener("keydown", (e) => {
+    if (!PR.on) return;
+    const next = ["ArrowRight", "ArrowDown", "PageDown", " ", "Enter", "n"], prev = ["ArrowLeft", "ArrowUp", "PageUp", "Backspace", "p"];
+    let go = null;
+    if (next.includes(e.key)) go = PR.i + 1;
+    else if (prev.includes(e.key)) go = PR.i - 1;
+    else if (e.key === "Home") go = 0;
+    else if (e.key === "End") go = PR.slides.length - 1;
+    else if (e.key === "Escape") { e.preventDefault(); e.stopImmediatePropagation(); present(false); return; }
+    else return;
+    e.preventDefault(); e.stopImmediatePropagation();
+    showSlide(go);
+  }, true);
+
+  /* ---------------- exportar para Word ----------------
+   * docx.js monta o arquivo; aqui ficam as imagens (lidas ao lado do documento), os diagramas (os mesmos SVG da
+   * exportação para LaTeX, em PNG) e as fórmulas (MathML do KaTeX, que vira equação do Word). */
+  async function rasterize(src, w, h, scale = 2) {
+    const img = new Image();
+    img.src = src;
+    await img.decode();
+    w = w || img.naturalWidth; h = h || img.naturalHeight;
+    const c = document.createElement("canvas");
+    c.width = Math.max(1, Math.ceil(w * scale)); c.height = Math.max(1, Math.ceil(h * scale));
+    const ctx = c.getContext("2d");
+    ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, c.width, c.height);
+    ctx.drawImage(img, 0, 0, c.width, c.height);
+    const blob = await new Promise((ok) => c.toBlob(ok, "image/png"));
+    return { data: new Uint8Array(await blob.arrayBuffer()), ext: "png", w, h };
+  }
+  async function docxImage(href) {
+    try {
+      const url = localUrl(href) || new URL(href, document.baseURI).href;
+      const blob = await (await fetch(url)).blob();
+      const type = blob.type || "";
+      const kind = /png/.test(type) ? "png" : /jpe?g/.test(type) ? "jpeg" : /gif/.test(type) ? "gif" : null;
+      if (!kind) {                         // SVG, WebP…: o Word quer PNG
+        const obj = URL.createObjectURL(blob);
+        try { return await rasterize(obj); } finally { URL.revokeObjectURL(obj); }
+      }
+      const bmp = await createImageBitmap(blob);
+      return { data: new Uint8Array(await blob.arrayBuffer()), ext: kind, w: bmp.width, h: bmp.height };
+    } catch (_) { return null; }           // imagem que não abre: fica o texto alternativo
+  }
+  function toBase64(bytes) {
+    let s = "";
+    for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+    return btoa(s);
+  }
+  /* para a camada nativa: { data (base64), name }, ou null quando não há o que exportar */
+  async function getDocx() {
+    if (S.kind !== "md" || S.lang === "typ" || !window.MiranteDocx) return null;
+    const name = (S.path || "").split(/[\\/]/).pop();
+    const stem = name.replace(/\.[^.]+$/, "").replace(/[^\p{L}\p{N}_ -]+/gu, "-") || tr("documento");
+    const md = mdSource();
+    let katex = null;
+    try { katex = await loadKatex(); } catch (_) { /* sem KaTeX, as fórmulas vão como texto */ }
+    const images = {};
+    const wiki = {};
+    marked.walkTokens(marked.lexer(md.replace(FRONT_MATTER, "")), (t) => {
+      if (t.type === "image") images[t.href] = null;
+      if (t.type === "wikilink" && t.embed && IMG_EXT.test(t.target)) wiki[t.target] = wikiHref(t.target);
+    });
+    for (const h of Object.keys(images)) images[h] = await docxImage(h);
+    for (const [target, href] of Object.entries(wiki)) images[target] = await docxImage(href);
+    // diagramas: na mesma ordem dos blocos, null onde o desenho falhou
+    const { figures, files } = await latexDiagrams(stem);
+    const svgOf = new Map(files.map((f) => [f.name, f.svg]));
+    const diagrams = [];
+    for (const f of figures) {
+      try { diagrams.push(f ? await rasterize("data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgOf.get(f.file)), f.width, f.height) : null); }
+      catch (_) { diagrams.push(null); }
+    }
+    // citações [@chave] do .md (no .tex e no .bib elas já chegam resolvidas pelo mdSource)
+    const fm = S.lang ? null : frontMatter(S.text);
+    const entries = fm && fm.bibliography.length ? bibEntries(fm.bibliography) : [];
+    const citer = entries.length ? new MiranteBib.Citer(entries, { lang: LANG, style: fm.numeric ? "numeric" : "authoryear" }) : null;
+    const bytes = MiranteDocx.fromMarkdown(md, {
+      lang: LANG, title: stem, images, diagrams,
+      math: (tex, display) => {
+        if (!katex) return "";
+        try { return MiranteDocx.mathml2omml(katex.renderToString(tex, { output: "mathml", displayMode: display, throwOnError: false, strict: "ignore" })); }
+        catch (_) { return ""; }
+      },
+      cite: citer ? (items) => citer.cite(items, { suppressAuthor: items[0].suppress }) : null,
+      references: citer ? () => citer.list({ all: fm.nocite }) : null,
+    });
+    return { data: toBase64(bytes), name: stem + ".docx" };
   }
 
   /* ---------------- exportar SVG ---------------- */
@@ -2165,8 +2621,9 @@
     if (fresh) closeBlockModal(true);
     S.path = p.path || null;
     // .gv/.dot usa o mesmo palco dos diagramas Mermaid ("mmd") e o .tex o do Markdown; S.lang diz quem desenha
-    S.kind = p.kind === "dot" ? "mmd" : p.kind === "tex" ? "md" : p.kind;
-    S.lang = p.kind === "dot" || p.kind === "tex" ? p.kind : null;
+    S.kind = p.kind === "dot" ? "mmd" : ["tex", "typ", "bib"].includes(p.kind) ? "md" : p.kind;
+    S.lang = ["dot", "tex", "typ", "bib"].includes(p.kind) ? p.kind : null;
+    if (fresh) bibs.files.clear();       // outro arquivo (ou recarregado): os .bib são lidos de novo
     if (p.prefs) S.prefs = { ...DEFAULTS, ...p.prefs };
     S.block = !!p.block; S.blockSent = p.text;
     if (fresh) { S.history = []; S.future = []; S.selected = null; S.mdZoom = 1; S.hasFit = false; }
@@ -2262,7 +2719,8 @@
   }
 
   window.mirante = {
-    render, setTheme, setLang, showWelcome, toggleEditor, zoomBy, getSvg, getLatex, toast, undo, redo, openFind, showShortcuts, showAiPrompts,
+    render, setTheme, setLang, showWelcome, toggleEditor, zoomBy, getSvg, getLatex, getDocx, typstResult, toast,
+    present: () => present(!PR.on), undo, redo, openFind, showShortcuts, showAiPrompts,
     /* a camada nativa pede um valor: executa fn e responde com {type:"reply"} */
     __ask: async (id, fn) => {
       let value = null;
@@ -2270,6 +2728,13 @@
       post({ type: "reply", id, value: value === undefined ? null : value });
     },
     fit: () => fit(true),
+    /* embutido (Explorer, Quick Look): { kind, text, name, base, pages (Typst já compilado), theme } */
+    preview: async (o) => {
+      const dark = o.theme ? o.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+      setTheme(dark ? "dark" : "light");
+      S.typPages = o.pages || null;
+      await render({ path: o.name || "", kind: o.kind || "md", text: o.text || "", base: o.base });
+    },
     _view: () => ({ ...S.view }),       // leitura para diagnóstico
     zoomReset: () => zoomBy(0),
     getSource: () => S.text,
@@ -2308,10 +2773,18 @@
       syncEditor(); notifySource(); draw();
     },
   };
+  if (EMBED) {
+    body.classList.add("embed");
+    // na prévia, link não navega (a janela é do Explorer ou do Finder); âncora dentro do documento continua valendo
+    document.addEventListener("click", (e) => {
+      const a = e.target.closest && e.target.closest("a[href]");
+      if (a && !a.getAttribute("href").startsWith("#")) e.preventDefault();
+    }, true);
+  }
   if (EDITOR_ONLY) {
     body.className = "editor-only editor-open mode-md";
     S.kind = "md"; S.editorOpen = true;
-  } else if (!IN_APP) {
+  } else if (!IN_APP && !EMBED) {
     showWelcome();                       // fora do app ninguém vai decidir: vai direto para as boas-vindas
   }
 

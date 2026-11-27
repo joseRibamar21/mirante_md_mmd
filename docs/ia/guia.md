@@ -95,8 +95,13 @@ mindmap
 Em blocos ` ```dot `: `digraph { rankdir=LR; a -> b -> c }`. O layout muda com `layout=neato`, `circo`,
 `twopi` ou `fdp`.
 
-## O que não funciona
+## Notas de rodapé, citações e Obsidian
 
-- Links `[[assim]]` do Obsidian e notas de rodapé `[^1]`.
+- Notas de rodapé: `texto[^1]` e, em qualquer lugar do arquivo, `[^1]: a nota`. Também `^[nota curta]`.
+- Citações: `[@chave]` ou `[@chave, p. 10]`, com `bibliography: referencias.bib` no cabeçalho do arquivo. Só use se
+  houver um `.bib`; não invente chaves.
+- Do Obsidian: `[[outra nota]]`, `[[nota|apelido]]`, `![[imagem.png]]`, `==destaque==` e `#etiqueta` funcionam.
+
+## O que não funciona
 - HTML com `<script>`, `<iframe>` ou `<style>` (é removido), e embutir PDF ou vídeo.
 - Atalhos de emoji como `:smile:`: use o próprio caractere.

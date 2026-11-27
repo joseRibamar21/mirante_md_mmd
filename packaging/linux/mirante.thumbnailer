@@ -1,0 +1,4 @@
+[Thumbnailer Entry]
+TryExec=/usr/bin/mirante
+Exec=/usr/bin/mirante --thumbnail %i %o %s
+MimeType=text/markdown;text/x-markdown;text/vnd.mermaid;text/vnd.graphviz;text/x-tex;text/x-typst;

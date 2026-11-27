@@ -16,7 +16,8 @@
 [**Baixar para Linux (.deb)**](https://github.com/joseRibamar21/mirante_md_mmd/releases/latest/download/Mirante-linux-amd64.deb) ·
 [**Baixar para Mac**](https://github.com/joseRibamar21/mirante_md_mmd/releases/latest/download/Mirante-macos-universal.dmg) ·
 [Todas as versões](https://github.com/joseRibamar21/mirante_md_mmd/releases) ·
-[Reportar um problema](https://github.com/joseRibamar21/mirante_md_mmd/issues)
+[Reportar um problema](https://github.com/joseRibamar21/mirante_md_mmd/issues) ·
+[**Apoiar no GitHub Sponsors**](https://github.com/sponsors/joseRibamar21)
 
 <img src="docs/demo.gif" width="800" alt="Demonstração: tela inicial com arquivos recentes, um documento Markdown com diagrama, um mapa mental com zoom e troca de layout, edição ao vivo no painel de código e tema escuro">
 
@@ -38,6 +39,18 @@ edite direto nele: o painel de código fica ao lado e o desenho acompanha enquan
 - **Qualquer diagrama Mermaid** em arquivos `.mmd`: fluxogramas, sequência, Gantt, classes, estados e outros.
 - **Grafos Graphviz** em arquivos `.gv` e `.dot`, com todos os motores de layout (`dot`, `neato`, `circo`,
   `twopi`, `fdp` e outros, escolhidos pelo atributo `layout` do grafo), sem precisar instalar o Graphviz.
+- **Documentos Typst** (`.typ`): compilados de verdade pelo próprio compilador do Typst, dentro do app e
+  offline. As páginas aparecem como no PDF final e acompanham a digitação; erros aparecem com linha e coluna, e
+  **Arquivo → Exportar PDF** gera o PDF. A internet só é usada se o documento importar um pacote `@preview/…`
+  que ainda não está no computador.
+- **Compatível com o Obsidian**: notas de rodapé (`[^1]` e `^[inline]`), links `[[nota]]`, `[[nota|apelido]]` e
+  `[[nota#seção]]` (a nota é procurada no cofre inteiro, como no Obsidian), imagens `![[foto.png|300]]`,
+  `==destaque==`, `#etiquetas`, `%%comentários%%` e os tipos de caixa do Obsidian (`todo`, `bug`, `failure`…).
+  As notas de rodapé viram `\footnote` no LaTeX e notas de rodapé de verdade no Word.
+- **Bibliografia** (`.bib`): abre a lista de referências formatada no padrão da ABNT, com a chave de cada uma.
+  O mesmo `.bib` serve às citações do Markdown (`[@chave]`, `[@chave, p. 10]`, com `bibliography: refs.bib`
+  no cabeçalho), do LaTeX (`\cite`, `\citet`, `\bibliography`) e do Typst (`@chave`, `#bibliography`): as
+  citações saem como (SOUZA; LIMA, 2020) e a lista de referências aparece no fim.
 - **Documentos LaTeX** (`.tex`): o Mirante mostra uma prévia formatada, com seções numeradas, fórmulas, tabelas,
   figuras, teoremas, notas de rodapé, citações e referências cruzadas, e atualiza enquanto você edita. É uma prévia
   para ler e revisar, não um compilador: pacotes como TikZ e a bibliografia em `.bib` não são desenhados.
@@ -48,6 +61,9 @@ edite direto nele: o painel de código fica ao lado e o desenho acompanha enquan
   pelo teclado, com desfazer e refazer.
 - **Editor ao lado** (<kbd>Ctrl</kbd> <kbd>E</kbd>) ou em janela separada (<kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>O</kbd>),
   com o desenho atualizando ao vivo.
+- **Miniaturas no gerenciador de arquivos** (Linux): no Nautilus e em outros que seguem o padrão do
+  freedesktop, os `.md`, `.tex`, `.typ`, `.mmd` e `.gv` mostram uma prévia da página (títulos, listas, tabelas,
+  fórmulas) ou do diagrama no lugar do ícone genérico.
 - **Sempre em dia com o disco**: salvou em outro programa, o Mirante redesenha na hora.
 - **Tela inicial com os arquivos recentes**; links para outros `.md`/`.mmd`/`.gv` e arquivos arrastados para a
   janela abrem no próprio app.
@@ -55,6 +71,19 @@ edite direto nele: o painel de código fica ao lado e o desenho acompanha enquan
 - **Em português e em inglês**: segue o idioma do sistema, ou escolha em **Exibir → Idioma (Language)**.
 - **Zoom e movimento suaves a 60 fps**, com o modo de renderização escolhido pela sua placa de vídeo.
 - **Buscar** no texto (<kbd>Ctrl</kbd> <kbd>F</kbd>), **exportar** o diagrama em SVG e **imprimir** ou salvar em PDF.
+- **Modo apresentação** (<kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>P</kbd> ou o botão ▶ da barra): o `.md` vira slides em
+  tela cheia, um para cada parte separada por `---` (sem nenhum, cada `##` começa um slide), com fórmulas,
+  diagramas, caixas, tabelas e código. Setas, espaço ou clique avançam e <kbd>Esc</kbd> sai. Também apresenta
+  `.tex` feitos no Beamer (um slide por `frame`) e `.typ` (uma página por slide). Veja `exemplos/apresentacao.md`.
+- **Trabalho no padrão ABNT** (Arquivo → Exportar como LaTeX ABNT): o `.md` vira um `.tex` na classe abnTeX2, com
+  capa, folha de rosto, resumo, abstract, sumário, capítulos, citações autor-data (abntex2cite), referências e
+  apêndices. Os dados da capa vêm do cabeçalho do `.md` (`titulo`, `autor`, `instituicao`, `curso`, `tipo`,
+  `orientador`, `cidade`, `ano`, `palavras-chave`); o que faltar sai marcado para preencher. Veja
+  `exemplos/tcc-abnt.md`.
+- **Exportar para Word** (menu Arquivo): o `.md` (e também o `.tex` e o `.bib`) vira um `.docx` com os estilos de
+  título do Word (entram no sumário), listas, tabelas, caixas de destaque, código, citações com a lista de
+  referências, fórmulas como **equações do Word, editáveis**, e os diagramas e imagens no lugar. Sem precisar
+  de outro programa instalado.
 - **Exportar para LaTeX** (menu Arquivo): o `.md` vira um `.tex` pronto para compilar ou subir no Overleaf, com
   título, seções, fórmulas, tabelas, caixas de destaque e os diagramas em `.svg` ao lado. Cada tabela também tem um
   botão **LaTeX** que copia só ela, para colar num trabalho que já existe.
@@ -203,12 +232,33 @@ plataformas e cria a release com eles anexados.
 
 ## Próximos passos
 
+Distribuição:
+
 - [x] Windows
 - [x] macOS (sem autenticação da Apple, por enquanto)
 - [ ] Snap Store (App Center do Ubuntu)
 - [ ] Microsoft Store
 - [ ] Flathub
 - [ ] Assinatura digital do instalador do Windows
+
+Recursos:
+
+- [x] LaTeX: prévia de `.tex` e exportação do Markdown para `.tex`
+- [ ] Prévia no gerenciador de arquivos: miniaturas no Linux, painel de visualização do Explorer no Windows
+  e Quick Look no Mac
+- [x] Typst (`.typ`) compilado de verdade, offline
+- [x] Bibliografia (`.bib`): abrir a lista de referências e usá-la nas citações do Markdown, do `.tex` e do `.typ`
+- [x] Exportar para Word (`.docx`)
+- [x] Modo apresentação: um `.md` com `---` entre as partes vira slides em tela cheia
+- [x] Modelo ABNT (abnTeX2) na exportação para LaTeX: capa, folha de rosto e sumário
+- [x] Compatibilidade com o Obsidian: notas de rodapé `[^1]` e links `[[assim]]`
+- [ ] Notebooks Jupyter (`.ipynb`): texto, código e resultados
+- [ ] Planilhas `.csv` e `.tsv` como tabela formatada
+
+## Apoiar
+
+O Mirante é gratuito e de código aberto. Se ele te ajuda, você pode apoiar o projeto pelo
+[GitHub Sponsors](https://github.com/sponsors/joseRibamar21).
 
 ## Licença
 

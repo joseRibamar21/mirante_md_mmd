@@ -53,7 +53,19 @@ jobs:
 
       - name: Testes do Rust
         working-directory: src-tauri
-        run: cargo test
+        run: cargo test --workspace
+
+      # prévia no Explorer: a DLL vai dentro do instalador (tauri.windows.conf.json) e o teste-explorer.exe,
+      # para o job de instalação
+      - name: Prévia do Explorer (Windows)
+        if: runner.os == 'Windows'
+        working-directory: src-tauri
+        run: cargo build --release -p mirante-preview --example teste-explorer
+
+      # Quick Look: as extensões vão para Mirante.app/Contents/PlugIns (tauri.macos.conf.json)
+      - name: Extensões do Quick Look (macOS)
+        if: runner.os == 'macOS'
+        run: bash packaging/macos/quicklook/build.sh
 
       - name: Gerar instaladores
         run: npx tauri build ${{ matrix.args }}
@@ -72,6 +84,7 @@ jobs:
             src-tauri/target/release/bundle/msi/*.msi
             src-tauri/target/release/bundle/msix/*.msix
             src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
+            src-tauri/target/release/examples/teste-explorer.exe
           if-no-files-found: error
 
   windows:
@@ -146,6 +159,19 @@ jobs:
 
           if ($title -notlike '*mapa-mental.mmd*') { throw "título inesperado: '$title'" }
           if ($count -ne 1) { throw "instância única falhou: $count processos" }
+
+      - name: Prévia no Explorer (miniaturas e painel de visualização)
+        if: always()
+        shell: pwsh
+        run: |
+          $dir = Split-Path $env:MIRANTE_EXE
+          Write-Host "DLL: $(Test-Path "$dir\mirante_preview.dll")  web: $(Test-Path "$dir\web\viewer.html")"
+          Get-ChildItem "HKCU:\Software\Classes\.md\ShellEx" -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "$($_.PSChildName) = $((Get-ItemProperty $_.PSPath).'(default)')" }
+          $teste = Get-ChildItem dist -Recurse -Filter teste-explorer.exe | Select-Object -First 1
+          $arquivos = 'estudo-fotossintese.md', 'fluxograma.mmd', 'artigo.tex', 'relatorio.typ' | ForEach-Object { "$PWD\exemplos\$_" }
+          New-Item -ItemType Directory -Force shots | Out-Null
+          & $teste.FullName shots @arquivos
+          if ($LASTEXITCODE) { throw "a prévia do Explorer falhou" }
 
       # o MSIX só instala assinado: aqui com um certificado de teste (na Store, quem assina é a Microsoft)
       - name: Instalar e abrir o MSIX
@@ -239,7 +265,7 @@ jobs:
           # o Finder registra o app sozinho ao copiar para /Applications; aqui força para não depender do tempo
           /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f /Applications/Mirante.app
           t=$(mktemp -d)
-          for e in md markdown mdown mkd mkdn mmd mermaid gv tex txt; do echo x > "$t/a.$e"; done
+          for e in md markdown mdown mkd mkdn mmd mermaid gv tex typ bib txt; do echo x > "$t/a.$e"; done
           cat > "$t/check.swift" <<'EOF'
           import AppKit
           let pasta = CommandLine.arguments[1]
@@ -254,7 +280,30 @@ jobs:
           }
           exit(falhou ? 1 : 0)
           EOF
-          swift "$t/check.swift" "$t" md markdown mdown mkd mkdn mmd mermaid gv tex txt
+          swift "$t/check.swift" "$t" md markdown mdown mkd mkdn mmd mermaid gv tex typ bib txt
+      - name: Quick Look (pré-visualização e miniaturas)
+        if: always()
+        run: |
+          mkdir -p shots
+          for x in MirantePreview MiranteThumbnail; do
+            a=/Applications/Mirante.app/Contents/PlugIns/$x.appex
+            echo "== $x"; ls "$a/Contents/MacOS" || true
+            codesign -dv --entitlements - "$a" 2>&1 | grep -E 'Identifier|sandbox|Signature' || true
+            pluginkit -a "$a" || true
+          done
+          pluginkit -m -v -p com.apple.quicklook.preview | grep -i mirante || echo "pré-visualização não registrada"
+          pluginkit -m -v -p com.apple.quicklook.thumbnail | grep -i mirante || echo "miniaturas não registradas"
+          qlmanage -r >/dev/null 2>&1; qlmanage -r cache >/dev/null 2>&1
+          for f in estudo-fotossintese.md fluxograma.mmd artigo.tex relatorio.typ; do
+            qlmanage -t -s 512 -o shots "exemplos/$f" 2>&1 | tail -2
+          done
+          ls -la shots
+          qlmanage -p exemplos/estudo-fotossintese.md >/dev/null 2>&1 &
+          sleep 10
+          screencapture -x shots/quicklook-previa.png || true
+          kill %1 2>/dev/null || true
+          ls shots/*.md.png shots/*.mmd.png >/dev/null 2>&1 || { echo "o Quick Look não gerou miniaturas"; exit 1; }
+
       - uses: actions/upload-artifact@v7
         if: always()
         with:
@@ -294,6 +343,14 @@ jobs:
           dbus-run-session -- mirante "$(python3 scripts/teste-imagens.py "$RUNNER_TEMP/img")" &
           sleep 10
           import -window root "shots/linux-${{ matrix.os }}-imagens.png"
+      - name: Miniaturas do gerenciador de arquivos (sem tela, como o Nautilus roda)
+        run: |
+          test -f /usr/share/thumbnailers/mirante.thumbnailer
+          unset DISPLAY WAYLAND_DISPLAY
+          for f in exemplos/*; do
+            /usr/bin/mirante --thumbnail "$f" "shots/miniatura-$(basename "$f").png" 256
+            file "shots/miniatura-$(basename "$f").png" | grep -q "PNG image data, 192 x 256"
+          done
       - uses: actions/upload-artifact@v7
         if: always()
         with:

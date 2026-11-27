@@ -55,6 +55,14 @@ jobs:
           sudo apt-get install -y -qq libwebkit2gtk-4.1-dev libxdo-dev librsvg2-dev
 
       - run: npm ci
+      # prévia no gerenciador de arquivos: a DLL do Explorer e as extensões do Quick Look vão dentro do instalador
+      - name: Prévia do Explorer (Windows)
+        if: runner.os == 'Windows'
+        working-directory: src-tauri
+        run: cargo build --release -p mirante-preview
+      - name: Extensões do Quick Look (macOS)
+        if: runner.os == 'macOS'
+        run: bash packaging/macos/quicklook/build.sh
       - run: npx tauri build ${{ matrix.args }}
 
       # nomes fixos: o README aponta para releases/latest/download/<nome>

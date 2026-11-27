@@ -330,17 +330,21 @@ jobs:
           # a janela do Mirante, aberta no passo anterior, não pode tapar a prévia
           osascript -e 'quit app "Mirante"' 2>/dev/null || true; pkill -x Mirante || true; sleep 2
           qlmanage -r >/dev/null 2>&1; qlmanage -r cache >/dev/null 2>&1
-          for f in estudo-fotossintese.md fluxograma.mmd artigo.tex relatorio.typ; do
-            qlmanage -t -s 512 -o shots "exemplos/$f" 2>&1 | tail -2
-          done
-          ls -la shots
+          # as miniaturas como o Finder pede (o qlmanage -t não usa as extensões novas)
+          ok_miniaturas=0
+          swift packaging/macos/quicklook/teste-miniatura.swift shots \
+            exemplos/estudo-fotossintese.md exemplos/fluxograma.mmd exemplos/artigo.tex exemplos/relatorio.typ || ok_miniaturas=1
           qlmanage -p exemplos/estudo-fotossintese.md >/dev/null 2>&1 &
           sleep 10
           screencapture -x shots/quicklook-previa.png || true
           kill %1 2>/dev/null || true
-          echo "== log das extensões"
-          log show --last 3m --info --style compact --predicate 'process BEGINSWITH "Mirante" OR eventMessage CONTAINS "Mirante:"' 2>/dev/null | tail -40 || true
-          ls shots/*.md.png shots/*.mmd.png >/dev/null 2>&1 || { echo "o Quick Look não gerou miniaturas"; exit 1; }
+          echo "== log da pré-visualização"
+          log show --last 3m --info --style compact --predicate 'process == "MirantePreview" OR eventMessage CONTAINS "Mirante:"' 2>/dev/null \
+            | grep -v -E "runningboard|cfprefsd|CarbonCore|xpc:connection|BoardServices" | head -120 || true
+          echo "== relatórios de falha"
+          for r in ~/Library/Logs/DiagnosticReports/Mirante*; do [ -e "$r" ] && { echo "-- $r"; head -60 "$r"; }; done
+          ls -la shots
+          exit $ok_miniaturas
 
       - uses: actions/upload-artifact@v7
         if: always()

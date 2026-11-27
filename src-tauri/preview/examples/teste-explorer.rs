@@ -43,6 +43,23 @@ mod imp {
         std::fs::create_dir_all(&out).ok();
         unsafe { CoInitializeEx(None, COINIT_APARTMENTTHREADED).ok()? };
         let mut falhas = 0;
+        // controle: um PNG, que o próprio Windows sabe miniaturizar. Se nem ele sai pelo Explorer, a máquina não
+        // faz miniaturas (o Windows Server do CI) e a falha do nosso pelo Explorer não diz nada sobre a DLL.
+        let controle = out.join("controle.png");
+        if let Some(mut p) = Pixmap::new(64, 64) {
+            p.fill(resvg::tiny_skia::Color::from_rgba8(47, 109, 246, 255));
+            save(&p, &controle);
+        }
+        let explorer_ok = match thumbnail(&controle.to_string_lossy()) {
+            Ok(_) => {
+                println!("controle: o Explorer fez a miniatura de um PNG");
+                true
+            }
+            Err(e) => {
+                println!("controle: o Explorer não fez a miniatura nem de um PNG ({e:?}); nesta máquina só vale o teste direto");
+                false
+            }
+        };
         for f in &args[1..] {
             let name = Path::new(f).file_name().unwrap().to_string_lossy().into_owned();
             match direct_thumbnail(f) {
@@ -71,7 +88,9 @@ mod imp {
                             println!("  sem isolamento de processo: OK ({}x{})", pix.width(), pix.height());
                         }
                         Err(e) => {
-                            falhas += 1;
+                            if explorer_ok {
+                                falhas += 1;
+                            }
                             println!("  sem isolamento de processo: FALHOU {e:?}");
                         }
                     }

@@ -1,5 +1,11 @@
 {
   "bundle": {
-    "licenseFile": null
+    "licenseFile": null,
+    "macOS": {
+      "files": {
+        "PlugIns/MirantePreview.appex": "target/quicklook/MirantePreview.appex",
+        "PlugIns/MiranteThumbnail.appex": "target/quicklook/MiranteThumbnail.appex"
+      }
+    }
   }
 }

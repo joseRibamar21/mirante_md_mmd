@@ -1,0 +1,13 @@
+{
+  "bundle": {
+    "resources": {
+      "target/release/mirante_preview.dll": "mirante_preview.dll",
+      "../web/": "web/"
+    },
+    "windows": {
+      "nsis": {
+        "installerHooks": "../packaging/windows/hooks.nsh"
+      }
+    }
+  }
+}

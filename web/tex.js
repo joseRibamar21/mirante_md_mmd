@@ -72,6 +72,7 @@
     textbf: ["**", "**"], textit: ["*", "*"], emph: ["*", "*"], textsl: ["*", "*"], underline: ["<u>", "</u>"],
     uline: ["<u>", "</u>"], sout: ["~~", "~~"], st: ["~~", "~~"], xout: ["~~", "~~"], textsuperscript: ["<sup>", "</sup>"],
     textsubscript: ["<sub>", "</sub>"], hl: ["<mark>", "</mark>"], highlight: ["<mark>", "</mark>"],
+    alert: ["**", "**"], structure: ["**", "**"],
     textrm: ["", ""], textsf: ["", ""], textsc: ["", ""], textup: ["", ""], textnormal: ["", ""], textmd: ["", ""],
     mbox: ["", ""], hbox: ["", ""], fbox: ["", ""], text: ["", ""], centerline: ["", ""], MakeUppercase: ["", ""],
     MakeLowercase: ["", ""], uppercase: ["", ""], lowercase: ["", ""], enquote: ["“", "”"], foreignlanguage: null,
@@ -187,6 +188,8 @@
     this.appendix = false;
     this.meta = {};
     this.depth = 0;
+    this.nocite = [];
+    this.citer = null;                    // MiranteBib.Citer, quando há um .bib
   }
   const C = Conv.prototype;
   C.keep = function (md) { this.ph.push(md); return PH(this.ph.length - 1); };
@@ -213,6 +216,9 @@
       (_, d, a, b) => this.keep(this.code(a != null ? a : b)));
     src = src.replace(/\\(url|nolinkurl)\{([^}]*)\}/g, (_, cmd, u) => this.keep(cmd === "url" ? `<${u.trim()}>` : this.code(u)));
     src = src.replace(/\\href\{([^}]*)\}/g, (_, u) => `\\href{${this.keep(u.trim().replace(/[()<> ]/g, encodeURIComponent))}}`);
+    // Beamer: as marcas de animação (<2->, \pause, \only<1>) não fazem sentido fora do projetor
+    src = src.replace(/\\(item|only|uncover|visible|invisible|alert|onslide|textbf|textit|emph|color|includegraphics|structure)\s*<[^>]*>/g, "\\$1")
+      .replace(/\\(pause|onslide)\b(\[[^\]]*\])?/g, "");
     // comentários: % até o fim da linha (não \%); linha só de comentário some inteira
     src = src.replace(/^[ \t]*%.*\n/gm, "").replace(/((?:^|[^\\])(?:\\\\)*)%.*$/gm, "$1");
     return src;
@@ -409,7 +415,10 @@
       case "quad": case "qquad": case "enspace": case "hfill": return " ";
       case "par": return "\n\n";
       case "appendix": this.appendix = true; this.count.chapter = this.count.section = 0; return "";
-      case "maketitle": return this.titleBlock();
+      case "maketitle": case "titlepage": return this.titleBlock();
+      case "frametitle": rd.opt(); return block(`## ${this.inline(rd.group())}`);
+      case "framesubtitle": return block(`*${this.inline(rd.group())}*`);
+      case "subtitle": case "institute": rd.opt(); rd.group(); return "";
       case "title": case "author": case "date": rd.opt(); this.meta[name] = rd.group(); return "";
       case "newcommand": case "renewcommand": case "providecommand": case "DeclareMathOperator": case "def": case "newtheorem":
         return this.skipDefinition(name, rd);
@@ -423,8 +432,11 @@
         const pre = rd.opt(), post = rd.opt();
         const note = post != null ? post : pre;
         const keys = rd.group().split(",").map((k) => k.trim());
-        return this.keep(`\uE005${keys.join(",")}\uE006${note ? this.inline(note) : ""}\uE007`);
+        return this.keep(`\uE005${name}\uE009${keys.join(",")}\uE006${note ? this.inline(note) : ""}\uE007`);
       }
+      // com um .bib carregado, a lista de referências sai daqui (as citadas, ou todas com \nocite{*})
+      case "bibliography": case "printbibliography": rd.opt(); if (name === "bibliography") rd.group(); return block(this.keep("\uE008"));
+      case "nocite": this.nocite.push(...rd.group().split(",").map((k) => k.trim())); return "";
       case "caption": {
         rd.opt();
         const text = this.inline(rd.group());
@@ -558,6 +570,20 @@
     const b = new Reader(body);
 
     if (name === "document") return this.conv(body, o);
+    // Beamer: cada frame é um slide (o --- separa os slides no modo apresentação)
+    if (base === "frame") {
+      b.opt();
+      let title = "";
+      if (/^\s*\{/.test(body.slice(b.i))) { title = this.inline(b.group()); if (/^\s*\{/.test(body.slice(b.i))) b.group(); }
+      const inner = this.restore(this.conv(b.rest())).trim();
+      return block(`---\n\n${title ? `## ${title}\n\n` : ""}${inner}`);
+    }
+    if (base === "block" || base === "alertblock" || base === "exampleblock") {
+      const t = this.inline(b.group());
+      return this.callout(base === "alertblock" ? "WARNING" : base === "exampleblock" ? "EXAMPLE" : "NOTE", t, b.rest());
+    }
+    if (base === "columns") return this.conv(b.rest().replace(/^\s*\[[^\]]*\]/, ""), o);
+    if (base === "column") { b.opt(); b.group(); return this.conv(b.rest(), o); }
     if (DISPLAY_ENVS.test(name)) return this.displayMath(body, name);
     if (LIST_ENVS.test(name)) return this.list(base, body);
     if (TABLE_ENVS.test(name)) return this.tabular(base, b);
@@ -724,15 +750,55 @@
       }
       return n;
     });
-    return s.replace(/\uE005([^\uE006]*)\uE006([^\uE007]*)\uE007/g, (_, keys, note) => {
-      const list = keys.split(",").map((k) => (this.cites[k] ? this.cites[k] : escMd(k))).join(", ");
+    const citer = this.citer;
+    s = s.replace(/\uE005(\w+)\uE009([^\uE006]*)\uE006([^\uE007]*)\uE007/g, (_, cmd, keys, note) => {
+      const ks = keys.split(",").filter(Boolean);
+      // \bibitem do próprio .tex vale primeiro; o .bib, para as chaves que só ele tem
+      if (citer && ks.some((k) => !this.cites[k] && citer.byKey.has(k))) return this.citeBib(cmd, ks, note);
+      const list = ks.map((k) => (this.cites[k] ? this.cites[k] : escMd(k))).join(", ");
       return `[${list}${note ? ", " + note : ""}]`;
     });
+    return s.replace(/\uE008/g, () => {
+      if (!citer) return "";
+      const all = this.nocite.includes("*");
+      for (const k of this.nocite) if (k !== "*" && citer.byKey.has(k) && !citer.order.includes(k)) citer.order.push(k);
+      return citer.list({ all });
+    });
+  };
+  // citação com o .bib: \citet e \textcite são narrativas, Souza (2020); \citeyear e \citeauthor, só uma parte
+  C.citeBib = function (cmd, keys, note) {
+    const citer = this.citer, B = root.MiranteBib;
+    const items = keys.map((key, k) => ({ key, note: k === keys.length - 1 ? note : "" }));
+    // no meio do texto a ABNT escreve "Souza e Lima (2020)", "Halliday, Resnick e Walker (2016)"
+    const and = this.lang === "en" ? " and " : " e ";
+    const name = (who) => {
+      const parts = who.toLowerCase().replace(/(^|[\s-])(\p{L})/gu, (_, a, b) => a + b.toUpperCase()).replace(/ Et Al\./, " et al.").split("; ");
+      return parts.length > 1 ? parts.slice(0, -1).join(", ") + and + parts[parts.length - 1] : parts[0];
+    };
+    if (citer.style !== "numeric" && /^(citet|textcite|Textcite|citeauthor|citeyear)$/.test(cmd)) {
+      return items.map(({ key, note: n }) => {
+        const e = citer.byKey.get(key);
+        if (!e) return `${escMd(key)}?`;
+        if (!citer.order.includes(key)) citer.order.push(key);
+        const a = B.authorYear(e, this.lang);
+        if (cmd === "citeyear") return a.year;
+        if (cmd === "citeauthor") return name(a.who);
+        return `${name(a.who)} (${a.year}${n ? ", " + n : ""})`;
+      }).join("; ");
+    }
+    return citer.cite(items);
   };
 
   /** O .tex inteiro em Markdown. */
   function toMarkdown(src, opts = {}) {
     const c = new Conv(opts);
+    if (opts.bib && opts.bib.length && root.MiranteBib) {
+      // estilo: autor-data com abntex2-alf, apalike, natbib…; senão, numérico como o plain do BibTeX
+      const st = /\\bibliographystyle\{([^}]*)\}/.exec(src), bl = /\\usepackage\[([^\]]*)\]\{biblatex\}/.exec(src);
+      const name = (st && st[1]) || (bl && bl[1]) || "";
+      const style = /alf|apa|nat|harv|chicago|author|abnt|agsm|dcu/i.test(name) && !/num/i.test(name) ? "authoryear" : "numeric";
+      c.citer = new root.MiranteBib.Citer(opts.bib, { lang: opts.lang, style });
+    }
     let text = c.protect(String(src).replace(/\r\n?/g, "\n"));
     const begin = text.indexOf("\\begin{document}");
     let body = text;
@@ -750,8 +816,16 @@
     if (c.notes.length) md += block(`---\n\n**${c.L.notes}**\n\n` + c.notes.map((n, k) => `${k + 1}. ${n}`).join("\n"));
     md = c.resolve(c.restore(md));
     // um espaço solto no começo da linha (texto logo depois de um \label) sai; recuo de lista tem 2 ou mais
-    return md.replace(/[ \t]+$/gm, "").replace(/^ (?=\S)/gm, "").replace(/\n{3,}/g, "\n\n").trim() + "\n";
+    md = md.replace(/[ \t]+$/gm, "").replace(/^ (?=\S)/gm, "").replace(/\n{3,}/g, "\n\n").trim();
+    // um --- logo no começo (o primeiro frame do Beamer) seria lido como cabeçalho YAML do Markdown
+    return md.replace(/^---\n+/, "") + "\n";
   }
 
-  root.MiranteTex = { toMarkdown };
+  /** Um trecho curto de LaTeX (um campo do .bib, um título) em Markdown de uma linha. */
+  function inline(src, opts = {}) {
+    const c = new Conv(opts);
+    return oneLine(c.resolve(c.restore(c.conv(c.protect(String(src))))));
+  }
+
+  root.MiranteTex = { toMarkdown, inline };
 })(this);

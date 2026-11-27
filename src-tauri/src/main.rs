@@ -5,6 +5,8 @@
 
 mod hardware;
 mod settings;
+mod thumbnail;
+mod typst_doc;
 
 use notify::{EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use percent_encoding::{percent_decode_str, utf8_percent_encode, AsciiSet, CONTROLS};
@@ -28,6 +30,8 @@ const TXT_EXT: &[&str] = &["txt", "text"];
 const MMD_EXT: &[&str] = &["mmd", "mermaid"];
 const DOT_EXT: &[&str] = &["gv", "dot"];
 const TEX_EXT: &[&str] = &["tex", "latex", "ltx"];
+const TYP_EXT: &[&str] = &["typ"];
+const BIB_EXT: &[&str] = &["bib"];
 const EDITOR_SUFFIX: &str = "-editor";
 
 /// Um documento aberto: uma janela principal.
@@ -185,12 +189,14 @@ fn kind_for(path: &Path) -> &'static str {
         Some(e) if DOT_EXT.contains(&e.as_str()) => "dot",
         Some(e) if TXT_EXT.contains(&e.as_str()) => "txt",
         Some(e) if TEX_EXT.contains(&e.as_str()) => "tex",
+        Some(e) if TYP_EXT.contains(&e.as_str()) => "typ",
+        Some(e) if BIB_EXT.contains(&e.as_str()) => "bib",
         _ => "md",
     }
 }
 
 fn is_doc(path: &Path) -> bool {
-    ext_of(path).is_some_and(|e| [MD_EXT, MMD_EXT, DOT_EXT, TXT_EXT, TEX_EXT].iter().any(|l| l.contains(&e.as_str())))
+    ext_of(path).is_some_and(|e| [MD_EXT, MMD_EXT, DOT_EXT, TXT_EXT, TEX_EXT, TYP_EXT, BIB_EXT].iter().any(|l| l.contains(&e.as_str())))
 }
 
 /// Caminho absoluto. No Windows sem `canonicalize`, que devolve o formato `\\?\C:\...`.
@@ -407,6 +413,9 @@ fn new_window(app: &AppHandle) -> tauri::Result<WebviewWindow> {
                     js(&h, &parent, "mirante.setLinked(false)");
                 }
             }
+            if let Some(p) = doc.as_ref().and_then(|d| d.path.clone()) {
+                typst_doc::forget(&p);
+            }
             drop(doc); // solta o watcher fora da trava
             for (child, _) in block_children(&h, &l) {
                 destroy(&h, &child);
@@ -454,6 +463,13 @@ fn navigate(app: &AppHandle, label: &str, url: &Url) -> bool {
         if is_doc(&path) && path.is_file() {
             let (h, l) = (app.clone(), label.to_string());
             std::thread::spawn(move || open_path(&h, &l, path));
+        } else if is_doc(&path) {
+            // [[nota]] do Obsidian: a nota pode estar em outra pasta do cofre
+            let (h, l) = (app.clone(), label.to_string());
+            std::thread::spawn(move || match resolve_note(&path) {
+                Some(found) => open_path(&h, &l, found),
+                None => toast(&h, &l, &format!("{} {}", tr(&h, "Nota não encontrada:", "Note not found:"), file_name(&path.to_string_lossy())), 4000),
+            });
         } else if path.exists() {
             let _ = app.opener().open_path(path.to_string_lossy(), None::<&str>);
         }
@@ -463,6 +479,57 @@ fn navigate(app: &AppHandle, label: &str, url: &Url) -> bool {
         let _ = app.opener().open_url(url.as_str(), None::<&str>);
     }
     false
+}
+
+/// Procura a nota pelo nome no cofre do Obsidian (a pasta com .obsidian acima do documento) ou, sem cofre, nas
+/// subpastas da pasta do documento. O nome do arquivo decide, sem diferenciar maiúsculas.
+fn resolve_note(path: &Path) -> Option<PathBuf> {
+    let name = path.file_name()?.to_string_lossy().to_lowercase();
+    let dir = path.parent()?;
+    let base = dir.ancestors().find(|d| d.is_dir()).unwrap_or(dir);
+    let root = base.ancestors().find(|d| d.join(".obsidian").is_dir()).unwrap_or(base).to_path_buf();
+    let mut stack = vec![root];
+    let mut seen = 0usize;
+    while let Some(d) = stack.pop() {
+        let Ok(entries) = fs::read_dir(&d) else { continue };
+        for e in entries.flatten() {
+            seen += 1;
+            if seen > 50_000 {
+                return None; // pasta grande demais (a pasta pessoal inteira, por exemplo): desiste
+            }
+            let fname = e.file_name().to_string_lossy().to_lowercase();
+            if fname.starts_with('.') || fname == "node_modules" || fname == "target" {
+                continue;
+            }
+            let p = e.path();
+            if p.is_dir() {
+                stack.push(p);
+            } else if fname == name {
+                return Some(p);
+            }
+        }
+    }
+    None
+}
+
+/// Chama DllRegisterServer (ou DllUnregisterServer) da mirante_preview.dll. O NSIS é de 32 bits e não carrega
+/// uma DLL de 64; o próprio Mirante carrega.
+#[cfg(windows)]
+fn preview_registration(on: bool) -> i32 {
+    use std::os::windows::ffi::OsStrExt;
+    use windows_sys::Win32::System::LibraryLoader::{GetProcAddress, LoadLibraryW};
+    let Some(dll) = std::env::current_exe().ok().and_then(|e| e.parent().map(|d| d.join("mirante_preview.dll"))) else { return 1 };
+    let wide: Vec<u16> = dll.as_os_str().encode_wide().chain(Some(0)).collect();
+    unsafe {
+        let h = LoadLibraryW(wide.as_ptr());
+        if h.is_null() {
+            return 2;
+        }
+        let name: &[u8] = if on { b"DllRegisterServer\0" } else { b"DllUnregisterServer\0" };
+        let Some(f) = GetProcAddress(h, name.as_ptr()) else { return 3 };
+        let f: unsafe extern "system" fn() -> i32 = std::mem::transmute(f);
+        if f() >= 0 { 0 } else { 4 }
+    }
 }
 
 fn update_title(app: &AppHandle, label: &str) {
@@ -718,16 +785,18 @@ fn reload_if_changed(app: &AppHandle, label: &str) {
 }
 
 fn open_dialog(app: &AppHandle, label: &str) {
-    let all: Vec<&str> = MD_EXT.iter().chain(MMD_EXT).chain(DOT_EXT).chain(TEX_EXT).chain(TXT_EXT).copied().collect();
+    let all: Vec<&str> = MD_EXT.iter().chain(MMD_EXT).chain(DOT_EXT).chain(TEX_EXT).chain(TYP_EXT).chain(BIB_EXT).chain(TXT_EXT).copied().collect();
     let mut d = app
         .dialog()
         .file()
         .set_title(tr(app, "Abrir arquivo", "Open file"))
-        .add_filter(tr(app, "Markdown, LaTeX, diagramas e texto", "Markdown, LaTeX, diagrams and text"), &all)
+        .add_filter(tr(app, "Markdown, LaTeX, Typst, diagramas e texto", "Markdown, LaTeX, Typst, diagrams and text"), &all)
         .add_filter("Markdown", MD_EXT)
         .add_filter("Mermaid", MMD_EXT)
         .add_filter("Graphviz", DOT_EXT)
         .add_filter("LaTeX", TEX_EXT)
+        .add_filter("Typst", TYP_EXT)
+        .add_filter(tr(app, "Bibliografia (BibTeX)", "Bibliography (BibTeX)"), BIB_EXT)
         .add_filter(tr(app, "Texto", "Text"), TXT_EXT)
         .add_filter(tr(app, "Todos os arquivos", "All files"), &["*"]);
     if let Some(dir) = doc_path(app, label).and_then(|p| p.parent().map(Path::to_path_buf)) {
@@ -778,11 +847,12 @@ fn export_svg(app: &AppHandle, label: &str) {
 
 /// Exporta o .md como LaTeX: o .tex no lugar escolhido e um .svg por diagrama na mesma pasta
 /// (o .tex os inclui com \\includesvg pelo nome).
-fn export_latex(app: &AppHandle, label: &str) {
+fn export_latex(app: &AppHandle, label: &str, abnt: bool) {
     // de uma janela de diagrama, exporta o .md dono dela
     let l = owner(app, label);
     let path = doc_path(app, &l);
-    ask(app, &l.clone(), "mirante.getLatex()", move |app, v| {
+    let expr = if abnt { "mirante.getLatex({ abnt: true })" } else { "mirante.getLatex()" };
+    ask(app, &l.clone(), expr, move |app, v| {
         let Some(tex) = v["tex"].as_str().map(str::to_string) else {
             error(app, &l, tr(app, "Abra um arquivo Markdown (.md) para exportar como LaTeX.", "Open a Markdown (.md) file to export it as LaTeX."));
             return;
@@ -817,7 +887,8 @@ fn export_latex(app: &AppHandle, label: &str) {
             match res {
                 Err(e) => error(&h, &l2, &format!("{}\n{e}", tr(&h, "Não foi possível exportar:", "Could not export:"))),
                 Ok(()) => {
-                    let msg = match (files.len(), lang(&h)) {
+                    let svgs = files.iter().filter(|(n, _)| n.ends_with(".svg")).count();
+                    let msg = match (svgs, lang(&h)) {
                         (0, Lang::En) => "Exported as LaTeX.".to_string(),
                         (0, _) => "Exportado como LaTeX.".to_string(),
                         (1, Lang::En) => "Exported as LaTeX, with 1 diagram in SVG next to it.".to_string(),
@@ -827,6 +898,68 @@ fn export_latex(app: &AppHandle, label: &str) {
                     };
                     toast(&h, &l2, &msg, 4000);
                 }
+            }
+        });
+    });
+}
+
+/// Word: a página monta o .docx inteiro (docx.js) e manda em base64; aqui só se escolhe onde gravar.
+fn export_docx(app: &AppHandle, label: &str) {
+    use base64::Engine as _;
+    let l = owner(app, label);
+    let path = doc_path(app, &l);
+    ask(app, &l.clone(), "mirante.getDocx()", move |app, v| {
+        let bytes = v["data"].as_str().and_then(|d| base64::engine::general_purpose::STANDARD.decode(d).ok());
+        let Some(bytes) = bytes else {
+            error(app, &l, tr(app, "Abra um arquivo Markdown, LaTeX ou BibTeX para exportar para o Word.", "Open a Markdown, LaTeX or BibTeX file to export to Word."));
+            return;
+        };
+        let name = v["name"].as_str().unwrap_or("documento.docx").to_string();
+        let mut d = app.dialog().file().set_title(tr(app, "Exportar para Word", "Export to Word")).add_filter("Word", &["docx"]).set_file_name(name);
+        if let Some(dir) = path.as_ref().and_then(|p| p.parent()) {
+            d = d.set_directory(dir);
+        }
+        if let Some(w) = app.get_webview_window(&l) {
+            d = d.set_parent(&w);
+        }
+        let (h, l2) = (app.clone(), l.clone());
+        d.save_file(move |f| {
+            let Some(out) = f.and_then(|f| f.into_path().ok()) else { return };
+            match fs::write(&out, &bytes) {
+                Ok(()) => toast(&h, &l2, tr(&h, "Exportado para o Word.", "Exported to Word."), 3000),
+                Err(e) => error(&h, &l2, &format!("{}\n{e}", tr(&h, "Não foi possível exportar:", "Could not export:"))),
+            }
+        });
+    });
+}
+
+/// PDF de verdade para o Typst (o mesmo do `typst compile`); nos outros formatos, a impressão do sistema,
+/// que já oferece "Salvar como PDF".
+fn export_pdf(app: &AppHandle, label: &str) {
+    let l = owner(app, label);
+    let Some(path) = doc_path(app, &l) else { return };
+    if kind_for(&path) != "typ" {
+        if let Some(w) = app.get_webview_window(&l) {
+            let _ = w.print();
+        }
+        return;
+    }
+    ask(app, &l.clone(), "mirante.getSource()", move |app, v| {
+        let text = v.as_str().unwrap_or_default().to_string();
+        let stem = path.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_else(|| "documento".into());
+        let mut d = app.dialog().file().set_title(tr(app, "Exportar PDF", "Export PDF")).add_filter("PDF", &["pdf"]).set_file_name(format!("{stem}.pdf"));
+        if let Some(dir) = path.parent() {
+            d = d.set_directory(dir);
+        }
+        if let Some(w) = app.get_webview_window(&l) {
+            d = d.set_parent(&w);
+        }
+        let (h, l2) = (app.clone(), l.clone());
+        d.save_file(move |f| {
+            let Some(out) = f.and_then(|f| f.into_path().ok()) else { return };
+            match typst_doc::pdf(&path, text).and_then(|bytes| fs::write(&out, bytes).map_err(|e| e.to_string())) {
+                Ok(()) => toast(&h, &l2, tr(&h, "PDF exportado.", "PDF exported."), 3000),
+                Err(e) => error(&h, &l2, &format!("{}\n{e}", tr(&h, "Não foi possível exportar:", "Could not export:"))),
             }
         });
     });
@@ -983,6 +1116,26 @@ async fn page_message(app: AppHandle, webview_window: WebviewWindow, msg: String
             update_title(&app, &label);
         }
         "openBlock" => open_block_window(&app, &label, m["index"].as_u64().unwrap_or(0) as usize),
+        "fullscreen" => {
+            // modo apresentação: tela cheia de verdade, sem a barra de menu (no Mac o menu é do sistema)
+            if let Some(w) = app.get_webview_window(&label) {
+                let on = m["on"].as_bool().unwrap_or(false);
+                #[cfg(not(target_os = "macos"))]
+                let _ = if on { w.hide_menu() } else { w.show_menu() };
+                let _ = w.set_fullscreen(on);
+            }
+        }
+        "typst" => {
+            // compilar pode levar uns décimos de segundo: fora da thread das mensagens
+            let Some(path) = doc_path(&app, &label) else { return };
+            let text = m["text"].as_str().unwrap_or_default().to_string();
+            let seq = m["seq"].as_u64().unwrap_or(0);
+            std::thread::spawn(move || {
+                let mut out = typst_doc::render(&path, text);
+                out["seq"] = json!(seq);
+                js(&app, &label, &format!("mirante.typstResult({out})"));
+            });
+        }
         "blockEdit" => {
             if let Some((parent, i)) = block_of(&app, &label) {
                 js(&app, &parent, &format!("mirante.replaceBlock({i}, {})", js_str(m["text"].as_str().unwrap_or_default())));
@@ -1088,6 +1241,9 @@ fn build_menu(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
         .separator()
         .item(&item("export-svg", t("Exportar diagrama como SVG…", "Export diagram as SVG…"), Some("CmdOrCtrl+Shift+E"))?)
         .item(&item("export-latex", t("Exportar como LaTeX (.tex)…", "Export as LaTeX (.tex)…"), None)?)
+        .item(&item("export-latex-abnt", t("Exportar como LaTeX ABNT (abnTeX2)…", "Export as LaTeX ABNT (abnTeX2)…"), None)?)
+        .item(&item("export-docx", t("Exportar para Word (.docx)…", "Export to Word (.docx)…"), None)?)
+        .item(&item("export-pdf", t("Exportar PDF…", "Export PDF…"), None)?)
         .item(&item("print", t("Imprimir / salvar PDF…", "Print / save as PDF…"), Some("CmdOrCtrl+P"))?)
         .separator()
         .item(&item("folder", t("Mostrar na pasta", "Show in folder"), None)?)
@@ -1108,6 +1264,7 @@ fn build_menu(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
         .item(&item("toggle-editor", t("Editor de código", "Code editor"), Some("CmdOrCtrl+E"))?)
         .item(&item("detach-editor", t("Editor em janela separada", "Editor in a separate window"), Some("CmdOrCtrl+Shift+O"))?)
         .item(&item("find", t("Buscar…", "Find…"), Some("CmdOrCtrl+F"))?)
+        .item(&item("present", t("Apresentar", "Present"), Some("CmdOrCtrl+Shift+P"))?)
         .separator()
         .item(&item("zoom-in", t("Aumentar zoom", "Zoom in"), Some("CmdOrCtrl+="))?)
         .item(&item("zoom-out", t("Diminuir zoom", "Zoom out"), Some("CmdOrCtrl+-"))?)
@@ -1165,7 +1322,10 @@ fn menu_action(app: &AppHandle, label: &str, id: &str) {
         "save" => save(app, label, None),
         "reload" => reload_from_disk(app, label),
         "export-svg" => export_svg(app, label),
-        "export-latex" => export_latex(app, label),
+        "export-latex" => export_latex(app, label, false),
+        "export-latex-abnt" => export_latex(app, label, true),
+        "export-pdf" => export_pdf(app, label),
+        "export-docx" => export_docx(app, label),
         "print" => {
             if let Some(w) = app.get_webview_window(label) {
                 let _ = w.print();
@@ -1192,6 +1352,7 @@ fn menu_action(app: &AppHandle, label: &str, id: &str) {
         "toggle-editor" => js(app, label, "mirante.toggleEditor()"),
         "detach-editor" => open_editor_window(app, label),
         "find" => js(app, label, "mirante.openFind()"),
+        "present" => js(app, label, "mirante.present()"),
         "zoom-in" => js(app, label, "mirante.zoomBy(1)"),
         "zoom-out" => js(app, label, "mirante.zoomBy(-1)"),
         "zoom-reset" => js(app, label, "mirante.zoomBy(0)"),
@@ -1276,6 +1437,16 @@ fn about(app: &AppHandle, label: &str) {
 // ---------------------------------------------------------------- início
 
 fn main() {
+    // miniatura para o gerenciador de arquivos: sem janela, sem GTK (roda numa caixa isolada, sem tela)
+    let args: Vec<String> = std::env::args().collect();
+    if args.get(1).map(String::as_str) == Some("--thumbnail") {
+        std::process::exit(thumbnail::run(&args[2..]));
+    }
+    // instalador do Windows: registra (ou tira) a prévia do Explorer, que fica numa DLL ao lado do executável
+    #[cfg(windows)]
+    if let Some(op) = args.get(1).filter(|a| *a == "--register-preview" || *a == "--unregister-preview") {
+        std::process::exit(preview_registration(op == "--register-preview"));
+    }
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, args, cwd| {
             open_args(app, &args, Path::new(&cwd));
@@ -1367,6 +1538,20 @@ mod tests {
     }
 
     #[test]
+    fn acha_nota_no_cofre() {
+        let root = std::env::temp_dir().join(format!("mirante-cofre-{}", std::process::id()));
+        fs::create_dir_all(root.join(".obsidian")).unwrap();
+        fs::create_dir_all(root.join("aulas/fisica")).unwrap();
+        fs::create_dir_all(root.join("diario")).unwrap();
+        fs::write(root.join("aulas/fisica/Queda Livre.md"), "x").unwrap();
+        // o link [[queda livre]] escrito numa nota de outra pasta
+        let found = resolve_note(&root.join("diario/queda livre.md")).unwrap();
+        assert_eq!(found, root.join("aulas/fisica/Queda Livre.md"));
+        assert!(resolve_note(&root.join("diario/nao existe.md")).is_none());
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
     fn tipo_pela_extensao() {
         assert_eq!(kind_for(Path::new("notas.md")), "md");
         assert_eq!(kind_for(Path::new("mapa.MMD")), "mmd");
@@ -1374,6 +1559,8 @@ mod tests {
         assert_eq!(kind_for(Path::new("grafo.dot")), "dot");
         assert_eq!(kind_for(Path::new("notas.TXT")), "txt");
         assert_eq!(kind_for(Path::new("artigo.tex")), "tex");
+        assert_eq!(kind_for(Path::new("tese.typ")), "typ");
+        assert_eq!(kind_for(Path::new("refs.bib")), "bib");
         assert!(is_doc(Path::new("artigo.TEX")) && is_doc(Path::new("cap.ltx")));
         assert!(is_doc(Path::new("lista.txt")));
         assert!(is_doc(Path::new("grafo.gv")) && is_doc(Path::new("a.mermaid")));

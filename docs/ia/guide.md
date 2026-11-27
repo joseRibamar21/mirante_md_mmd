@@ -95,8 +95,13 @@ mindmap
 In ` ```dot ` blocks: `digraph { rankdir=LR; a -> b -> c }`. Change the layout with `layout=neato`, `circo`,
 `twopi` or `fdp`.
 
-## What doesn't work
+## Footnotes, citations and Obsidian
 
-- Obsidian `[[links]]` and `[^1]` footnotes.
+- Footnotes: `text[^1]` and, anywhere in the file, `[^1]: the note`. Also `^[short note]`.
+- Citations: `[@key]` or `[@key, p. 10]`, with `bibliography: references.bib` in the file's header. Only use them if
+  there is a `.bib`; don't make up keys.
+- From Obsidian: `[[another note]]`, `[[note|alias]]`, `![[image.png]]`, `==highlight==` and `#tag` work.
+
+## What doesn't work
 - HTML with `<script>`, `<iframe>` or `<style>` (it's removed), and embedding PDF or video.
 - Emoji shortcodes like `:smile:`: use the character itself.

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!-- extensões do Quick Look rodam isoladas; o arquivo pedido o próprio sistema libera -->
+  <key>com.apple.security.app-sandbox</key><true/>
+  <key>com.apple.security.files.user-selected.read-only</key><true/>
+  <!-- o WKWebView da pré-visualização não sobe o processo da página sem esta, mesmo só com arquivos locais -->
+  <key>com.apple.security.network.client</key><true/>
+</dict>
+</plist>

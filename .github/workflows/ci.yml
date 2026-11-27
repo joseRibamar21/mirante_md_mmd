@@ -340,7 +340,7 @@ jobs:
           kill %1 2>/dev/null || true
           echo "== log da pré-visualização"
           log show --last 3m --info --style compact --predicate 'process == "MirantePreview" OR eventMessage CONTAINS "Mirante:"' 2>/dev/null \
-            | grep -v -E "runningboard|cfprefsd|CarbonCore|xpc:connection|BoardServices" | head -120 || true
+            | grep -E "Mirante:|WebKit|WebContent|WebProcess|[Ss]andbox|deny|[Ee]rror|fault|exception|preparePreview" | head -80 || true
           echo "== relatórios de falha"
           for r in ~/Library/Logs/DiagnosticReports/Mirante*; do [ -e "$r" ] && { echo "-- $r"; head -60 "$r"; }; done
           ls -la shots

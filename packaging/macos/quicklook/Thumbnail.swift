@@ -29,7 +29,9 @@ final class ThumbnailProvider: QLThumbnailProvider {
         let size = CGSize(width: CGFloat(w) * scale, height: CGFloat(h) * scale)
         handler(QLThumbnailReply(contextSize: size) { context in
             context.interpolationQuality = .high
-            context.draw(image, in: CGRect(origin: .zero, size: size))
+            // o contexto vem em pixels (o tamanho pedido vezes a escala da tela), não em pontos: desenhar no
+            // tamanho em pontos ocupava só um canto da miniatura
+            context.draw(image, in: CGRect(x: 0, y: 0, width: context.width, height: context.height))
             return true
         }, nil)
     }
